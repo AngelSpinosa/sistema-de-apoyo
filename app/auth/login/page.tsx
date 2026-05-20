@@ -34,8 +34,8 @@ export default function LoginPage() {
       .single()
 
     const rutas: Record<string, string> = {
-      docente: '/docente/dashboard',
-      estudiante: '/estudiante/dashboard',
+      docente: '/dashboard',
+      estudiante: '/dashboard',
       administrador: '/admin/dashboard',
     }
 
