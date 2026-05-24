@@ -27,11 +27,15 @@ export default function LoginPage() {
       return
     }
 
-    const { data: perfil } = await supabase
+    const { data: perfil, error: errorPerfil } = await supabase
       .from('usuario')
       .select('rol')
       .eq('id_usuario', data.user.id)
       .single()
+    
+      console.log('ID del usuario:', data.user.id)
+      console.log('Perfil obtenido:', perfil)
+      console.log('Error del perfil:', errorPerfil)
 
     const rutas: Record<string, string> = {
       docente: '/dashboard',
@@ -48,7 +52,7 @@ export default function LoginPage() {
       {/* Panel izquierdo — imagen */}
       <div className="hidden md:flex w-1/2 items-center justify-center bg-gray-100">
         <img
-          src=""
+          src="/fei.jpg"
           alt="Imagen de bienvenida"
           className="object-cover w-full h-full"
         />

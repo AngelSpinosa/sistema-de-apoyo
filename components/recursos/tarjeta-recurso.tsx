@@ -1,4 +1,8 @@
+'use client'
+
 import { MoreVertical, Star } from 'lucide-react'
+import { useState } from 'react'
+import OpcionesRecurso from "../busqueda/opciones-recurso"
 
 type Props = {
   titulo: string
@@ -17,12 +21,13 @@ export default function TarjetaRecurso({
   miniatura,
   onClick,
 }: Props) {
+  const [menuVisible, setMenuVisible] = useState(false)
+
   return (
     <div
       className="flex flex-col gap-2 cursor-pointer group"
       onClick={onClick}
     >
-      {/* Miniatura */}
       <div className="w-full aspect-video bg-gray-200 rounded-lg overflow-hidden">
         {miniatura ? (
           <img
@@ -35,10 +40,8 @@ export default function TarjetaRecurso({
         )}
       </div>
 
-      {/* Info */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-          {/* Título y fuente */}
           <div className="flex items-center gap-2">
             <span className="text-sm font-semibold text-gray-900 truncate">
               {titulo}
@@ -46,7 +49,6 @@ export default function TarjetaRecurso({
             <span className="text-xs text-gray-400 shrink-0">{fuente}</span>
           </div>
 
-          {/* Estrellas */}
           <div className="flex gap-0.5">
             {[1, 2, 3, 4, 5].map((i) => (
               <Star
@@ -61,17 +63,29 @@ export default function TarjetaRecurso({
             ))}
           </div>
 
-          {/* Descripción */}
           <p className="text-xs text-gray-400 truncate">{descripcion}</p>
         </div>
 
-        {/* Menú */}
-        <button
-          onClick={(e) => e.stopPropagation()}
-          className="p-1 rounded hover:bg-gray-100 transition shrink-0"
-        >
-          <MoreVertical size={16} className="text-gray-400" />
-        </button>
+        {/* Botón menú con opciones */}
+        <div className="relative shrink-0">
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setMenuVisible(!menuVisible)
+            }}
+            className="p-1 rounded hover:bg-gray-100 transition"
+          >
+            <MoreVertical size={16} className="text-gray-400" />
+          </button>
+
+          <OpcionesRecurso
+            visible={menuVisible}
+            onCerrar={() => setMenuVisible(false)}
+            onGuardar={() => console.log('Guardar:', titulo)}
+            onCompartir={() => console.log('Compartir:', titulo)}
+            onNoMeInteresa={() => console.log('No me interesa:', titulo)}
+          />
+        </div>
       </div>
     </div>
   )
