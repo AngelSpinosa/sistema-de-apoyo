@@ -8,6 +8,14 @@ import BotonContextoPedagogico from '@/components/recursos/boton-contexto-pedago
 
 type RolUsuario = 'docente' | 'estudiante' | 'administrador'
 
+type DatosCuracion = {
+  objetivoAprendizaje: string
+  nivelDificultad: 'facil' | 'intermedio' | 'dificil'
+  tiempoEstimadoUso: string
+  notasUso: string
+  perfilEstudianteSugerido: string
+}
+
 type RecursoDetalle = {
   id: string
   titulo: string
@@ -19,44 +27,71 @@ type RecursoDetalle = {
   totalCalificaciones: number
   autor: string
   estadoSello: 'sin_sello' | 'pendiente' | 'aprobado' | 'rechazado'
-  contextoExistente?: string
+  curacion?: Partial<DatosCuracion>
 }
 
 type Props = {
   idRecurso: string
   rol: RolUsuario
   esMiembroAcademia?: boolean
+  nombreUsuario?: string
 }
 
-// Determina el tipo canónico del recurso
 function detectarTipo(formato: string, url: string): 'pdf' | 'video' | 'imagen' {
   const f = formato?.toLowerCase() ?? ''
   const u = url?.toLowerCase() ?? ''
   if (f === 'video' || /\.(mp4|webm|ogg|mov)$/i.test(u)) return 'video'
   if (f === 'pdf' || u.includes('.pdf') || u.includes('cloudinary')) return 'pdf'
   if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(u)) return 'imagen'
-  return 'pdf' // fallback
+  return 'pdf'
 }
 
-// ─── Vista PDF: dos columnas ──────────────────────────────────────────────────
-function VistaPDF({
+// ─── Acciones docente — compartidas entre vistas ──────────────────────────────
+function AccionesDocente({
   recurso,
-  rol,
   esMiembroAcademia,
-  onCalificar,
+  nombreDocente,
   onSolicitarSello,
   onGuardarContexto,
 }: {
   recurso: RecursoDetalle
+  esMiembroAcademia: boolean
+  nombreDocente?: string
+  onSolicitarSello: () => Promise<void>
+  onGuardarContexto: (datos: DatosCuracion) => Promise<void>
+}) {
+  return (
+    <div className="flex flex-col gap-3 pt-2 border-t border-gray-100">
+      <BadgeSello
+        estadoInicial={recurso.estadoSello}
+        onSolicitar={onSolicitarSello}
+        esMiembroAcademia={esMiembroAcademia}
+        nombreDocente={nombreDocente}
+      />
+      <BotonContextoPedagogico
+        idRecurso={recurso.id}
+        datosIniciales={recurso.curacion}
+        onGuardar={onGuardarContexto}
+      />
+    </div>
+  )
+}
+
+// ─── Vista PDF ────────────────────────────────────────────────────────────────
+function VistaPDF({
+  recurso, rol, esMiembroAcademia, nombreDocente,
+  onCalificar, onSolicitarSello, onGuardarContexto,
+}: {
+  recurso: RecursoDetalle
   rol: RolUsuario
   esMiembroAcademia: boolean
+  nombreDocente?: string
   onCalificar: (v: number) => Promise<void>
   onSolicitarSello: () => Promise<void>
-  onGuardarContexto: (t: string) => Promise<void>
+  onGuardarContexto: (datos: DatosCuracion) => Promise<void>
 }) {
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden">
-      {/* ── Columna izquierda: metadatos ── */}
       <aside className="w-72 flex-shrink-0 flex flex-col gap-5 p-6 overflow-y-auto border-r border-gray-100 bg-white">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-bold text-gray-900 leading-snug">{recurso.titulo}</h1>
@@ -67,7 +102,6 @@ function VistaPDF({
           )}
         </div>
 
-        {/* Calificación — todos */}
         <div className="flex flex-col gap-1.5">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Calificación</p>
           <CalificacionEstrellas
@@ -79,32 +113,25 @@ function VistaPDF({
           />
         </div>
 
-        {/* Acciones docente */}
         {rol === 'docente' && (
-          <div className="flex flex-col gap-3 pt-2 border-t border-gray-100">
-            <BadgeSello
-              estadoInicial={recurso.estadoSello}
-              onSolicitar={onSolicitarSello}
-              esMiembroAcademia={esMiembroAcademia}
-            />
-            <BotonContextoPedagogico
-              idRecurso={recurso.id}
-              contextoExistente={recurso.contextoExistente}
-              onGuardar={onGuardarContexto}
-            />
-          </div>
+          <AccionesDocente
+            recurso={recurso}
+            esMiembroAcademia={esMiembroAcademia}
+            nombreDocente={nombreDocente}
+            onSolicitarSello={onSolicitarSello}
+            onGuardarContexto={onGuardarContexto}
+          />
         )}
       </aside>
 
-      {/* ── Columna derecha: visor PDF ── */}
       <main className="flex-1 bg-gray-50 overflow-hidden">
         {recurso.url ? (
-            <iframe
-              src={`https://docs.google.com/viewer?url=${encodeURIComponent(recurso.url)}&embedded=true`}
-              title={recurso.titulo}
-              className="w-full h-full border-0"
-              aria-label={`PDF: ${recurso.titulo}`}
-            />
+          <iframe
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(recurso.url)}&embedded=true`}
+            title={recurso.titulo}
+            className="w-full h-full border-0"
+            aria-label={`PDF: ${recurso.titulo}`}
+          />
         ) : (
           <div className="flex items-center justify-center h-full">
             <p className="text-gray-400 text-sm">URL del documento no disponible.</p>
@@ -115,33 +142,24 @@ function VistaPDF({
   )
 }
 
-// ─── Vista Video: visor arriba, info abajo ────────────────────────────────────
+// ─── Vista Video ──────────────────────────────────────────────────────────────
 function VistaVideo({
-  recurso,
-  rol,
-  esMiembroAcademia,
-  onCalificar,
-  onSolicitarSello,
-  onGuardarContexto,
+  recurso, rol, esMiembroAcademia, nombreDocente,
+  onCalificar, onSolicitarSello, onGuardarContexto,
 }: {
   recurso: RecursoDetalle
   rol: RolUsuario
   esMiembroAcademia: boolean
+  nombreDocente?: string
   onCalificar: (v: number) => Promise<void>
   onSolicitarSello: () => Promise<void>
-  onGuardarContexto: (t: string) => Promise<void>
+  onGuardarContexto: (datos: DatosCuracion) => Promise<void>
 }) {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
-      {/* Visor de video */}
       <div className="w-full bg-black">
         {recurso.url ? (
-          <video
-            src={`https://docs.google.com/viewer?url=${encodeURIComponent(recurso.url)}&embedded=true`}
-            controls
-            className="w-full max-h-[60vh] object-contain"
-            aria-label={`Video: ${recurso.titulo}`}
-          >
+          <video src={recurso.url} controls className="w-full max-h-[60vh] object-contain">
             Tu navegador no soporta la reproducción de video.
           </video>
         ) : (
@@ -151,15 +169,12 @@ function VistaVideo({
         )}
       </div>
 
-      {/* Metadatos + acciones */}
       <div className="p-6 md:p-10 max-w-4xl mx-auto w-full flex flex-col md:flex-row md:items-start md:justify-between gap-6">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-bold text-gray-900 leading-tight">{recurso.titulo}</h1>
           <p className="text-sm text-gray-500">{recurso.tipo}</p>
           <p className="text-sm text-gray-700 font-medium">{recurso.fuente}</p>
-          {recurso.descripcion && (
-            <p className="text-sm text-gray-500">{recurso.descripcion}</p>
-          )}
+          {recurso.descripcion && <p className="text-sm text-gray-500">{recurso.descripcion}</p>}
           <div className="mt-3">
             <CalificacionEstrellas
               promedio={recurso.promedio}
@@ -172,16 +187,13 @@ function VistaVideo({
         </div>
 
         {rol === 'docente' && (
-          <div className="flex flex-col gap-3 min-w-[220px]">
-            <BadgeSello
-              estadoInicial={recurso.estadoSello}
-              onSolicitar={onSolicitarSello}
+          <div className="min-w-[220px]">
+            <AccionesDocente
+              recurso={recurso}
               esMiembroAcademia={esMiembroAcademia}
-            />
-            <BotonContextoPedagogico
-              idRecurso={recurso.id}
-              contextoExistente={recurso.contextoExistente}
-              onGuardar={onGuardarContexto}
+              nombreDocente={nombreDocente}
+              onSolicitarSello={onSolicitarSello}
+              onGuardarContexto={onGuardarContexto}
             />
           </div>
         )}
@@ -191,7 +203,7 @@ function VistaVideo({
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia = false }: Props) {
+export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia = false, nombreUsuario }: Props) {
   const [recurso, setRecurso] = useState<RecursoDetalle | null>(null)
   const [cargando, setCargando] = useState(true)
   const supabase = createClient()
@@ -222,32 +234,48 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
 
       const { data: selloData } = await supabase
         .from('sello_validacion')
-        .select('estado_sello')
+        .select('estado')
         .eq('id_recurso', idRecurso)
         .maybeSingle()
 
       const { data: metaData } = await supabase
-        .from('metadato_pedagogico')
-        .select('descripcion_pedagogica')
+        .from('recurso_curado')
+        .select(`
+          id_curacion,
+          metadato_pedagogico (
+            objetivo_aprendizaje,
+            nivel_dificultad,
+            tiempo_estimado_uso,
+            notas_uso,
+            perfil_estudiante_sugerido
+          )
+        `)
         .eq('id_recurso', idRecurso)
         .maybeSingle()
 
+      const meta = (metaData as any)?.metadato_pedagogico
+
       const rb = (data as any).recurso_bruto
       const url = rb?.url_fuente ?? ''
-      const formato = rb?.formato ?? ''
 
       setRecurso({
         id: data.id_recurso,
         titulo: data.titulo,
-        tipo: detectarTipo(formato, url),
+        tipo: detectarTipo(rb?.formato ?? '', url),
         url,
         fuente: rb?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
         descripcion: rb?.autor ?? '',
         promedio: data.promedio_calificacion ?? 0,
         totalCalificaciones: 0,
         autor: rb?.autor ?? '',
-        estadoSello: selloData?.estado_sello ?? 'sin_sello',
-        contextoExistente: metaData?.descripcion_pedagogica ?? '',
+        estadoSello: selloData?.estado ?? 'sin_sello',
+        curacion: meta ? {
+          objetivoAprendizaje: meta.objetivo_aprendizaje ?? '',
+          nivelDificultad: meta.nivel_dificultad ?? 'facil',
+          tiempoEstimadoUso: meta.tiempo_estimado_uso ?? '',
+          notasUso: meta.notas_uso ?? '',
+          perfilEstudianteSugerido: meta.perfil_estudiante_sugerido ?? '',
+        } : undefined,
       })
       setCargando(false)
     }
@@ -266,16 +294,48 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
   }
 
   const handleSolicitarSello = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
     await supabase.from('sello_validacion').insert({
       id_recurso: idRecurso,
-      estado_sello: 'pendiente',
+      id_docente: user.id,
+      estado: 'pendiente',
     })
   }
 
-  const handleGuardarContexto = async (texto: string) => {
+  const handleGuardarContexto = async (datos: DatosCuracion) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return
+
+    // 1. Crear o recuperar recurso_curado
+    let idCuracion: string | null = null
+    const { data: curacionExistente } = await supabase
+      .from('recurso_curado')
+      .select('id_curacion')
+      .eq('id_recurso', idRecurso)
+      .eq('id_docente', user.id)
+      .maybeSingle()
+
+    if (curacionExistente) {
+      idCuracion = curacionExistente.id_curacion
+    } else {
+      const { data: nuevaCuracion, error } = await supabase
+        .from('recurso_curado')
+        .insert({ id_recurso: idRecurso, id_docente: user.id })
+        .select('id_curacion')
+        .single()
+      if (error) { console.error('Error creando recurso_curado:', error); return }
+      idCuracion = nuevaCuracion.id_curacion
+    }
+
+    // 2. Upsert metadato_pedagogico vinculado a esa curación
     await supabase.from('metadato_pedagogico').upsert({
-      id_recurso: idRecurso,
-      descripcion_pedagogica: texto,
+      id_curacion: idCuracion,
+      objetivo_aprendizaje: datos.objetivoAprendizaje,
+      nivel_dificultad: datos.nivelDificultad,
+      tiempo_estimado_uso: datos.tiempoEstimadoUso,
+      notas_uso: datos.notasUso,
+      perfil_estudiante_sugerido: datos.perfilEstudianteSugerido,
     })
   }
 
@@ -299,12 +359,12 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     recurso,
     rol,
     esMiembroAcademia,
+    nombreDocente: nombreUsuario,
     onCalificar: handleCalificar,
     onSolicitarSello: handleSolicitarSello,
     onGuardarContexto: handleGuardarContexto,
   }
 
-  // Enruta al layout correcto según el tipo detectado
   if (recurso.tipo === 'video') return <VistaVideo {...props} />
   return <VistaPDF {...props} />
 }

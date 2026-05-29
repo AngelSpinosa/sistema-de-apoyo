@@ -14,18 +14,19 @@ export default async function Page({ params }: Props) {
 
   const { data: perfil } = await supabase
     .from('usuario')
-    .select('rol, docente(es_miembro_academia)')
+    .select('rol, nombre, docente(es_miembro_academia)')  // ← añadir nombre
     .eq('id_usuario', user?.id)
     .single()
 
   const rol = perfil?.rol ?? 'estudiante'
-  const esMiembro = (perfil as any)?.docente?.[0]?.es_miembro_academia ?? false
-
+  const esMiembro = (perfil as any)?.docente?.es_miembro_academia ?? false
+  console.log('perfil completo:', JSON.stringify(perfil, null, 2))
   return (
     <DetalleRecursoPage
       idRecurso={id}
       rol={rol}
       esMiembroAcademia={esMiembro}
+      nombreUsuario={perfil?.nombre ?? ''}   // ← pasar aquí
     />
   )
 }

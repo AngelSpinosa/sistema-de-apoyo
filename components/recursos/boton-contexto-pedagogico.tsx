@@ -1,47 +1,48 @@
 'use client'
 
 import { useState } from 'react'
+import FormularioCuracion from '@/components/curacion/formulario-curacion'
+
+type DatosCuracion = {
+  objetivoAprendizaje: string
+  nivelDificultad: 'facil' | 'intermedio' | 'dificil'
+  tiempoEstimadoUso: string
+  notasUso: string
+  perfilEstudianteSugerido: string
+}
 
 type Props = {
   idRecurso: string
-  contextoExistente?: string
-  onGuardar?: (texto: string) => Promise<void>
+  datosIniciales?: Partial<DatosCuracion>
+  onGuardar?: (datos: DatosCuracion) => Promise<void>
 }
 
 export default function BotonContextoPedagogico({
   idRecurso,
-  contextoExistente = '',
+  datosIniciales,
   onGuardar,
 }: Props) {
   const [abierto, setAbierto] = useState(false)
-  const [texto, setTexto] = useState(contextoExistente)
-  const [guardando, setGuardando] = useState(false)
-  const [guardado, setGuardado] = useState(false)
+  const tieneContexto = !!(datosIniciales?.objetivoAprendizaje || datosIniciales?.notasUso)
 
-  const tieneContexto = contextoExistente.trim().length > 0
-
-  const handleGuardar = async () => {
-    if (!texto.trim()) return
-    setGuardando(true)
-    try {
-      await onGuardar?.(texto.trim())
-      setGuardado(true)
-      setTimeout(() => {
-        setGuardado(false)
-        setAbierto(false)
-      }, 1200)
-    } catch (e) {
-      console.error('Error al guardar contexto:', e)
-    } finally {
-      setGuardando(false)
-    }
+  const handleGuardar = async (datos: DatosCuracion) => {
+    await onGuardar?.(datos)
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <>
+      {abierto && (
+        <FormularioCuracion
+          idRecurso={idRecurso}
+          datosIniciales={datosIniciales}
+          onGuardar={handleGuardar}
+          onCerrar={() => setAbierto(false)}
+        />
+      )}
+
       <button
         type="button"
-        onClick={() => setAbierto((v) => !v)}
+        onClick={() => setAbierto(true)}
         className={`
           inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium
           transition-all duration-200 cursor-pointer
@@ -60,48 +61,6 @@ export default function BotonContextoPedagogico({
         </svg>
         {tieneContexto ? 'Ver contexto pedagógico' : 'Añadir contexto pedagógico'}
       </button>
-
-      {abierto && (
-        <div className="rounded-xl border border-gray-200 bg-white shadow-md p-4 flex flex-col gap-3">
-          <p className="text-xs text-gray-500 font-medium uppercase tracking-wide">
-            Contexto pedagógico
-          </p>
-          <textarea
-            value={texto}
-            onChange={(e) => setTexto(e.target.value)}
-            rows={4}
-            maxLength={600}
-            placeholder="Describe el objetivo de aprendizaje, el nivel educativo, sugerencias de uso o cualquier anotación pedagógica relevante..."
-            className="w-full resize-none rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#003087] focus:border-transparent transition"
-          />
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-gray-400">{texto.length}/600</span>
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setAbierto(false)}
-                className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleGuardar}
-                disabled={guardando || !texto.trim()}
-                className={`
-                  px-4 py-1.5 text-xs rounded-lg font-medium transition
-                  ${guardado
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-[#003087] text-white hover:bg-[#002070] disabled:opacity-50 disabled:cursor-not-allowed'
-                  }
-                `}
-              >
-                {guardado ? '✓ Guardado' : guardando ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    </>
   )
 }
