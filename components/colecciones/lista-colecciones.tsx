@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/client'
 import TarjetaColeccion from '@/components/colecciones/tarjeta-coleccion'
 import FormularioColeccion from '@/components/colecciones/formulario-coleccion'
 import Sidebar from '@/components/layout/sidebar'
+import ModalCompartir from '@/components/colecciones/modal-compartir'
 
 type Coleccion = {
   id: string
@@ -27,6 +28,8 @@ export default function ListaColecciones() {
   const [coleccionEditar, setColeccionEditar]   = useState<Coleccion | null>(null)
   const [coleccionEliminar, setColeccionEliminar] = useState<Coleccion | null>(null)
   const [eliminando, setEliminando]             = useState(false)
+  const [coleccionCompartir, setColeccionCompartir] = useState<Coleccion | null>(null)
+
   const supabase = createClient()
 
   useEffect(() => {
@@ -123,8 +126,11 @@ export default function ListaColecciones() {
   }
 
   const handleCompartir = (coleccion: Coleccion) => {
-    // Placeholder — implementar lógica de compartir (link, modal, etc.)
-    console.log('Compartir colección:', coleccion.id)
+    if (coleccion.privacidad === 'privada') {
+      alert('Esta colección es privada. Edítala y cámbiala a pública para poder compartirla.')
+      return
+    }
+    setColeccionCompartir(coleccion)
   }
 
   return (
@@ -157,6 +163,13 @@ export default function ListaColecciones() {
               onGuardar={handleEditar}
               onCerrar={() => setColeccionEditar(null)}
               modoEdicion
+            />
+          )}
+
+          {coleccionCompartir && (
+            <ModalCompartir
+              coleccion={coleccionCompartir}
+              onCerrar={() => setColeccionCompartir(null)}
             />
           )}
 

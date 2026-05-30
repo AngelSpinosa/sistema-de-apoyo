@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react'
 import { Menu, Bookmark, Settings, User } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { createPortal } from 'react-dom'
+
 
 export default function Sidebar() {
   const [abierto, setAbierto] = useState(false)
@@ -11,6 +13,9 @@ export default function Sidebar() {
   const router = useRouter()
   const pathname = usePathname()
   const supabase = createClient()
+  const [menuPerfil, setMenuPerfil] = useState(false)
+  const [menuPerfilPos, setMenuPerfilPos] = useState({ top: 0, left: 0 })
+  const botonPerfilRef = React.useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     async function obtenerRol() {
@@ -27,6 +32,22 @@ export default function Sidebar() {
     }
     obtenerRol()
   }, [])
+
+  const abrirMenuPerfil = () => {
+    if (botonPerfilRef.current) {
+      const rect = botonPerfilRef.current.getBoundingClientRect()
+      setMenuPerfilPos({
+        top: rect.top + window.scrollY - 8,   // aparece arriba del botón
+        left: rect.right + window.scrollX + 8,
+      })
+    }
+    setMenuPerfil((v) => !v)
+  }
+
+  const handleCerrarSesion = async () => {
+    await supabase.auth.signOut()
+    router.push('/auth/login')
+  }
 
   const rutaColecciones = rol === 'docente'
     ? '/docente/colecciones'
@@ -97,15 +118,52 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* Perfil */}
+        {/* Perfil — reemplaza el botón existente */}
         <button
-          onClick={() => navegar('/perfil')}
+          ref={botonPerfilRef}
+          onClick={abrirMenuPerfil}
           className="mt-auto mb-4 p-2 rounded-full hover:bg-white/10 transition"
           aria-label="Perfil"
         >
           <User size={24} />
         </button>
       </aside>
+
+      {/* Portal del dropdown de perfil */}
+      {menuPerfil && typeof document !== 'undefined' && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[100]"
+            onClick={() => setMenuPerfil(false)}
+          />
+          <div
+            className="absolute z-[101] bg-white rounded-xl shadow-xl border border-gray-100 py-1 w-44 text-sm overflow-hidden"
+            style={{ top: menuPerfilPos.top, left: menuPerfilPos.left }}
+          >
+            <button
+              type="button"
+              onClick={() => { setMenuPerfil(false); navegar('/perfil') }}
+              className="w-full text-left px-4 py-2.5 text-gray-700 hover:bg-gray-50 transition flex items-center gap-2"
+            >
+              <User size={16} className="text-gray-400" />
+              Ir al perfil
+            </button>
+            <div className="border-t border-gray-100 my-1" />
+            <button
+              type="button"
+              onClick={handleCerrarSesion}
+              className="w-full text-left px-4 py-2.5 text-red-500 hover:bg-red-50 transition flex items-center gap-2"
+            >
+              <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
+                <path fillRule="evenodd" d="M3 3a1 1 0 011 1v12a1 1 0 11-2 0V4a1 1 0 011-1zm7.707 3.293a1 1 0 010 1.414L8.414 10l2.293 2.293a1 1 0 11-1.414 1.414l-3-3a1 1 0 010-1.414l3-3a1 1 0 011.414 0zM11 10a1 1 0 011-1h3a1 1 0 110 2h-3a1 1 0 01-1-1z" clipRule="evenodd" />
+              </svg>
+              Cerrar sesión
+            </button>
+          </div>
+        </>,
+        document.body
+      )}
+
 
       {abierto && (
         <div
