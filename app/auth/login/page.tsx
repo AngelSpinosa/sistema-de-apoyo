@@ -27,11 +27,15 @@ export default function LoginPage() {
       return
     }
 
-    const { data: perfil } = await supabase
+    const { data: perfil, error: errorPerfil } = await supabase
       .from('usuario')
       .select('rol')
       .eq('id_usuario', data.user.id)
       .single()
+    
+      console.log('ID del usuario:', data.user.id)
+      console.log('Perfil obtenido:', perfil)
+      console.log('Error del perfil:', errorPerfil)
 
     const rutas: Record<string, string> = {
       docente: '/dashboard',
