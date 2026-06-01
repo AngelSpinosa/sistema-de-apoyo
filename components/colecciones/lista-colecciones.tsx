@@ -6,6 +6,7 @@ import TarjetaColeccion from '@/components/colecciones/tarjeta-coleccion'
 import FormularioColeccion from '@/components/colecciones/formulario-coleccion'
 import Sidebar from '@/components/layout/sidebar'
 import ModalCompartir from '@/components/colecciones/modal-compartir'
+import { usePathname, useRouter } from 'next/navigation'
 
 type Coleccion = {
   id: string
@@ -31,6 +32,9 @@ export default function ListaColecciones() {
   const [coleccionCompartir, setColeccionCompartir] = useState<Coleccion | null>(null)
 
   const supabase = createClient()
+  const router = useRouter()
+  const pathname = usePathname()
+
 
   useEffect(() => {
     cargarColecciones()
@@ -111,6 +115,10 @@ export default function ListaColecciones() {
     setColeccionEditar(null)
     await cargarColecciones()
   }
+
+    const rutaDetalle = pathname.startsWith('/estudiante')
+    ? '/estudiante/biblioteca'
+    : '/docente/colecciones'
 
   const handleEliminarConfirmado = async () => {
     if (!coleccionEliminar) return
@@ -300,7 +308,7 @@ export default function ListaColecciones() {
                 <TarjetaColeccion
                   key={c.id}
                   coleccion={c}
-                  onClick={() => console.log('Ver colección:', c.id)}
+                  onClick={() => router.push(`${rutaDetalle}/${c.id}`)}
                   onEditar={() => setColeccionEditar(c)}
                   onEliminar={() => setColeccionEliminar(c)}
                   onCompartir={() => handleCompartir(c)}

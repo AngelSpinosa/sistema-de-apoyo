@@ -150,6 +150,7 @@ export default function DashboardPage() {
               resultadosBusqueda.map((r) => (
                 <TarjetaRecursoBusqueda
                   key={r.id}
+                  idRecurso={r.id}
                   titulo={r.titulo}
                   fuente={r.fuente}
                   tipo={r.tipo}
@@ -177,6 +178,7 @@ export default function DashboardPage() {
               {recursosSeguirViendo.map((r) => (
                 <TarjetaRecurso
                   key={r.id}
+                  idRecurso={r.id}          // ← agregar
                   titulo={r.titulo}
                   fuente={r.fuente}
                   descripcion={r.descripcion}
@@ -197,6 +199,7 @@ export default function DashboardPage() {
               {recursosPorTema.map((r) => (
                 <TarjetaRecurso
                   key={r.id}
+                  idRecurso={r.id}          // ← agregar
                   titulo={r.titulo}
                   fuente={r.fuente}
                   descripcion={r.descripcion}

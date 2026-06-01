@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Menu, Bookmark, Settings, User } from 'lucide-react'
+import { Menu, Bookmark, Settings, User, Home } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { createPortal } from 'react-dom'
@@ -58,7 +58,13 @@ export default function Sidebar() {
     setAbierto(false)
   }
 
-  const botones = [
+    const botones = [
+    {
+      icono: <Home size={22} />,
+      etiqueta: 'Inicio',
+      ruta: '/dashboard',
+      matchRutas: ['/dashboard'],
+    },
     {
       icono: <Bookmark size={22} />,
       etiqueta: 'Colecciones',
@@ -85,38 +91,39 @@ export default function Sidebar() {
         `}
       >
         {/* Hamburguesa */}
-        <button
-          onClick={() => setAbierto(!abierto)}
-          className="mt-4 p-2 rounded-lg hover:bg-white/10 transition"
-          aria-label="Abrir menú"
-        >
-          <Menu size={24} />
-        </button>
+          <button
+            onClick={() => setAbierto(!abierto)}
+            className="mt-4 p-2 rounded-lg hover:bg-white/10 transition flex flex-col items-center gap-0.5 w-full"
+            aria-label="Abrir menú"
+          >
+            <Menu size={22} />
+            {!abierto && <span className="text-[9px] font-medium text-white/70">Opciones</span>}
+          </button>
 
         {/* Navegación */}
-        <nav className="flex flex-col gap-2 mt-6 w-full px-2">
-          {botones.map((btn) => {
-            const activo = btn.matchRutas.some((r) => pathname.startsWith(r))
-            return (
-              <button
-                key={btn.etiqueta}
-                onClick={() => navegar(btn.ruta)}
-                className={`
-                  flex items-center gap-3 px-2 py-2 rounded-lg
-                  hover:bg-white/10 transition w-full
-                  ${activo ? 'bg-white/20' : ''}
-                `}
-              >
-                <span className="shrink-0">{btn.icono}</span>
-                {abierto && (
-                  <span className="text-sm font-medium whitespace-nowrap">
-                    {btn.etiqueta}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </nav>
+          <nav className="flex flex-col gap-1 mt-4 w-full px-1">
+            {botones.map((btn) => {
+              const activo = btn.matchRutas.some((r) => pathname.startsWith(r))
+              return (
+                <button
+                  key={btn.etiqueta}
+                  onClick={() => navegar(btn.ruta)}
+                  className={`
+                    flex items-center gap-3 px-2 py-2 rounded-lg
+                    hover:bg-white/10 transition w-full
+                    ${!abierto ? 'flex-col gap-0.5 py-2' : ''}
+                    ${activo ? 'bg-white/20' : ''}
+                  `}
+                >
+                  <span className="shrink-0">{btn.icono}</span>
+                  {abierto
+                    ? <span className="text-sm font-medium whitespace-nowrap">{btn.etiqueta}</span>
+                    : <span className="text-[9px] font-medium text-white/70">{btn.etiqueta}</span>
+                  }
+                </button>
+              )
+            })}
+          </nav>
 
         {/* Perfil — reemplaza el botón existente */}
         <button
@@ -126,6 +133,7 @@ export default function Sidebar() {
           aria-label="Perfil"
         >
           <User size={24} />
+          <span className="text-[9px] font-medium text-white/70">Yo</span>
         </button>
       </aside>
 

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import OpcionesRecurso from "../busqueda/opciones-recurso"
 
 type Props = {
+  idRecurso: string   // ← agregar
   titulo: string
   fuente: string
   descripcion: string
@@ -14,7 +15,9 @@ type Props = {
   onClick?: () => void
 }
 
+
 export default function TarjetaRecursoBusqueda({
+  idRecurso,
   titulo,
   fuente,
   descripcion,
@@ -74,9 +77,9 @@ export default function TarjetaRecursoBusqueda({
         </button>
 
         <OpcionesRecurso
+          idRecurso={idRecurso}   // ← agregar
           visible={menuVisible}
           onCerrar={() => setMenuVisible(false)}
-          onGuardar={() => console.log('Guardar:', titulo)}
           onCompartir={() => console.log('Compartir:', titulo)}
           onNoMeInteresa={() => console.log('No me interesa:', titulo)}
         />
