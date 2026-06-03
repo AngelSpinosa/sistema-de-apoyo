@@ -40,32 +40,37 @@ export default function PaginaPerfil({ datosIniciales, userId }: Props) {
   const [modalContrasena, setModalContrasena] = useState(false)
   const supabase = createClient()
 
-  const handleGuardarPerfil = async (nuevos: DatosEditables) => {
-    // 1. Subir foto a Cloudinary si se seleccionó una
+  // pagina-perfil.tsx  — solo cambia handleGuardarPerfil
+
+    const handleGuardarPerfil = async (nuevos: DatosEditables) => {
+    // 1. Subir foto a tu API Route (que firma y sube a Cloudinary)
     let fotoUrl = datos.fotoUrl
     if (nuevos.foto) {
       const formData = new FormData()
-      formData.append('file', nuevos.foto)
-      formData.append('upload_preset', process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET!)
-      formData.append('folder', 'perfiles')
-      const res = await fetch(
-        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
-        { method: 'POST', body: formData }
-      )
+      formData.append('file',     nuevos.foto)
+      formData.append('folder',   'usuarios/perfiles')
+      formData.append('publicId', userId)
+
+      const res = await fetch('/api/imagenes/subir', {   // ← nueva ruta unificada
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!res.ok) {
+        console.error('Error al subir la foto')
+        return
+      }
+
       const json = await res.json()
-      fotoUrl = json.secure_url
+      fotoUrl = json.url
     }
 
     // 2. Actualizar tabla usuario
-    // ⚠️ Requiere columnas: apellidos, correo, url_fotografia
-    // ALTER TABLE usuario ADD COLUMN IF NOT EXISTS apellidos text;
-    // ALTER TABLE usuario ADD COLUMN IF NOT EXISTS correo text;
-    // ALTER TABLE usuario ADD COLUMN IF NOT EXISTS url_fotografia text;
     await supabase.from('usuario').update({
-      nombre: nuevos.nombre,
-      apellidos: nuevos.apellidos,
-      correo: nuevos.correo,
-      url_fotografia: fotoUrl,
+      nombre:                nuevos.nombre,
+      apellidos:             nuevos.apellidos,
+      correo_institucional:  nuevos.correo,
+      url_fotografia:        fotoUrl,
     }).eq('id_usuario', userId)
 
     // 3. Actualizar correo en auth si cambió

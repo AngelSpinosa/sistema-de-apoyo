@@ -9,32 +9,32 @@ import BotonContextoPedagogico from '@/components/recursos/boton-contexto-pedago
 type RolUsuario = 'docente' | 'estudiante' | 'administrador'
 
 type DatosCuracion = {
-  objetivoAprendizaje: string
-  nivelDificultad: 'facil' | 'intermedio' | 'dificil'
-  tiempoEstimadoUso: string
-  notasUso: string
-  perfilEstudianteSugerido: string
+  objetivoAprendizaje:       string
+  nivelDificultad:           'facil' | 'intermedio' | 'dificil'
+  tiempoEstimadoUso:         string
+  notasUso:                  string
+  perfilEstudianteSugerido:  string
 }
 
 type RecursoDetalle = {
-  id: string
-  titulo: string
-  tipo: string
-  url: string
-  fuente: string
-  descripcion: string
-  promedio: number
+  id:                  string
+  titulo:              string
+  tipo:                string
+  url:                 string
+  fuente:              string
+  descripcion:         string
+  promedio:            number
   totalCalificaciones: number
-  autor: string
-  estadoSello: 'sin_sello' | 'pendiente' | 'aprobado' | 'rechazado'
-  curacion?: Partial<DatosCuracion>
+  autor:               string
+  tieneSello:          boolean          // ← antes era estadoSello: 'sin_sello' | 'pendiente' | 'aprobado' | 'rechazado'
+  curacion?:           Partial<DatosCuracion>
 }
 
 type Props = {
-  idRecurso: string
-  rol: RolUsuario
-  esMiembroAcademia?: boolean
-  nombreUsuario?: string
+  idRecurso:           string
+  rol:                 RolUsuario
+  esMiembroAcademia?:  boolean
+  nombreUsuario?:      string
 }
 
 function detectarTipo(formato: string, url: string): 'pdf' | 'video' | 'imagen' {
@@ -46,25 +46,25 @@ function detectarTipo(formato: string, url: string): 'pdf' | 'video' | 'imagen' 
   return 'pdf'
 }
 
-// ─── Acciones docente — compartidas entre vistas ──────────────────────────────
+// ─── Acciones docente ─────────────────────────────────────────────────────────
 function AccionesDocente({
   recurso,
   esMiembroAcademia,
   nombreDocente,
-  onSolicitarSello,
+  onOtorgarSello,
   onGuardarContexto,
 }: {
-  recurso: RecursoDetalle
-  esMiembroAcademia: boolean
-  nombreDocente?: string
-  onSolicitarSello: () => Promise<void>
-  onGuardarContexto: (datos: DatosCuracion) => Promise<void>
+  recurso:            RecursoDetalle
+  esMiembroAcademia:  boolean
+  nombreDocente?:     string
+  onOtorgarSello:     () => Promise<void>
+  onGuardarContexto:  (datos: DatosCuracion) => Promise<void>
 }) {
   return (
     <div className="flex flex-col gap-3 pt-2 border-t border-gray-100">
       <BadgeSello
-        estadoInicial={recurso.estadoSello}
-        onSolicitar={onSolicitarSello}
+        estadoInicial={recurso.tieneSello ? 'con_sello' : 'sin_sello'}
+        onOtorgar={onOtorgarSello}
         esMiembroAcademia={esMiembroAcademia}
         nombreDocente={nombreDocente}
       />
@@ -80,15 +80,15 @@ function AccionesDocente({
 // ─── Vista PDF ────────────────────────────────────────────────────────────────
 function VistaPDF({
   recurso, rol, esMiembroAcademia, nombreDocente,
-  onCalificar, onSolicitarSello, onGuardarContexto,
+  onCalificar, onOtorgarSello, onGuardarContexto,
 }: {
-  recurso: RecursoDetalle
-  rol: RolUsuario
-  esMiembroAcademia: boolean
-  nombreDocente?: string
-  onCalificar: (v: number) => Promise<void>
-  onSolicitarSello: () => Promise<void>
-  onGuardarContexto: (datos: DatosCuracion) => Promise<void>
+  recurso:            RecursoDetalle
+  rol:                RolUsuario
+  esMiembroAcademia:  boolean
+  nombreDocente?:     string
+  onCalificar:        (v: number) => Promise<void>
+  onOtorgarSello:     () => Promise<void>
+  onGuardarContexto:  (datos: DatosCuracion) => Promise<void>
 }) {
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden">
@@ -118,7 +118,7 @@ function VistaPDF({
             recurso={recurso}
             esMiembroAcademia={esMiembroAcademia}
             nombreDocente={nombreDocente}
-            onSolicitarSello={onSolicitarSello}
+            onOtorgarSello={onOtorgarSello}
             onGuardarContexto={onGuardarContexto}
           />
         )}
@@ -145,15 +145,15 @@ function VistaPDF({
 // ─── Vista Video ──────────────────────────────────────────────────────────────
 function VistaVideo({
   recurso, rol, esMiembroAcademia, nombreDocente,
-  onCalificar, onSolicitarSello, onGuardarContexto,
+  onCalificar, onOtorgarSello, onGuardarContexto,
 }: {
-  recurso: RecursoDetalle
-  rol: RolUsuario
-  esMiembroAcademia: boolean
-  nombreDocente?: string
-  onCalificar: (v: number) => Promise<void>
-  onSolicitarSello: () => Promise<void>
-  onGuardarContexto: (datos: DatosCuracion) => Promise<void>
+  recurso:            RecursoDetalle
+  rol:                RolUsuario
+  esMiembroAcademia:  boolean
+  nombreDocente?:     string
+  onCalificar:        (v: number) => Promise<void>
+  onOtorgarSello:     () => Promise<void>
+  onGuardarContexto:  (datos: DatosCuracion) => Promise<void>
 }) {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -192,7 +192,7 @@ function VistaVideo({
               recurso={recurso}
               esMiembroAcademia={esMiembroAcademia}
               nombreDocente={nombreDocente}
-              onSolicitarSello={onSolicitarSello}
+              onOtorgarSello={onOtorgarSello}
               onGuardarContexto={onGuardarContexto}
             />
           </div>
@@ -204,7 +204,7 @@ function VistaVideo({
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia = false, nombreUsuario }: Props) {
-  const [recurso, setRecurso] = useState<RecursoDetalle | null>(null)
+  const [recurso, setRecurso]   = useState<RecursoDetalle | null>(null)
   const [cargando, setCargando] = useState(true)
   const supabase = createClient()
 
@@ -232,9 +232,10 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
         return
       }
 
+      // Si existe una fila → tiene sello. Si no → no tiene.
       const { data: selloData } = await supabase
         .from('sello_validacion')
-        .select('estado')
+        .select('id_validacion')
         .eq('id_recurso', idRecurso)
         .maybeSingle()
 
@@ -254,26 +255,25 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
         .maybeSingle()
 
       const meta = (metaData as any)?.metadato_pedagogico
-
-      const rb = (data as any).recurso_bruto
-      const url = rb?.url_fuente ?? ''
+      const rb   = (data as any).recurso_bruto
+      const url  = rb?.url_fuente ?? ''
 
       setRecurso({
-        id: data.id_recurso,
-        titulo: data.titulo,
-        tipo: detectarTipo(rb?.formato ?? '', url),
+        id:                  data.id_recurso,
+        titulo:              data.titulo,
+        tipo:                detectarTipo(rb?.formato ?? '', url),
         url,
-        fuente: rb?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
-        descripcion: rb?.autor ?? '',
-        promedio: data.promedio_calificacion ?? 0,
+        fuente:              rb?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
+        descripcion:         rb?.autor ?? '',
+        promedio:            data.promedio_calificacion ?? 0,
         totalCalificaciones: 0,
-        autor: rb?.autor ?? '',
-        estadoSello: selloData?.estado ?? 'sin_sello',
+        autor:               rb?.autor ?? '',
+        tieneSello:          !!selloData,   // ← true si existe fila, false si no
         curacion: meta ? {
-          objetivoAprendizaje: meta.objetivo_aprendizaje ?? '',
-          nivelDificultad: meta.nivel_dificultad ?? 'facil',
-          tiempoEstimadoUso: meta.tiempo_estimado_uso ?? '',
-          notasUso: meta.notas_uso ?? '',
+          objetivoAprendizaje:      meta.objetivo_aprendizaje ?? '',
+          nivelDificultad:          meta.nivel_dificultad ?? 'facil',
+          tiempoEstimadoUso:        meta.tiempo_estimado_uso ?? '',
+          notasUso:                 meta.notas_uso ?? '',
           perfilEstudianteSugerido: meta.perfil_estudiante_sugerido ?? '',
         } : undefined,
       })
@@ -293,13 +293,13 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     })
   }
 
-  const handleSolicitarSello = async () => {
+  const handleOtorgarSello = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     await supabase.from('sello_validacion').insert({
-      id_recurso: idRecurso,
-      id_docente: user.id,
-      estado: 'pendiente',
+      id_recurso:         idRecurso,
+      id_docente:         user.id,
+      fecha_otorgamiento: new Date().toISOString(),
     })
   }
 
@@ -307,7 +307,6 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
-    // 1. Crear o recuperar recurso_curado
     let idCuracion: string | null = null
     const { data: curacionExistente } = await supabase
       .from('recurso_curado')
@@ -328,13 +327,12 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
       idCuracion = nuevaCuracion.id_curacion
     }
 
-    // 2. Upsert metadato_pedagogico vinculado a esa curación
     await supabase.from('metadato_pedagogico').upsert({
-      id_curacion: idCuracion,
-      objetivo_aprendizaje: datos.objetivoAprendizaje,
-      nivel_dificultad: datos.nivelDificultad,
-      tiempo_estimado_uso: datos.tiempoEstimadoUso,
-      notas_uso: datos.notasUso,
+      id_curacion:               idCuracion,
+      objetivo_aprendizaje:      datos.objetivoAprendizaje,
+      nivel_dificultad:          datos.nivelDificultad,
+      tiempo_estimado_uso:       datos.tiempoEstimadoUso,
+      notas_uso:                 datos.notasUso,
       perfil_estudiante_sugerido: datos.perfilEstudianteSugerido,
     })
   }
@@ -359,9 +357,9 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     recurso,
     rol,
     esMiembroAcademia,
-    nombreDocente: nombreUsuario,
-    onCalificar: handleCalificar,
-    onSolicitarSello: handleSolicitarSello,
+    nombreDocente:    nombreUsuario,
+    onCalificar:      handleCalificar,
+    onOtorgarSello:   handleOtorgarSello,
     onGuardarContexto: handleGuardarContexto,
   }
 
