@@ -52,7 +52,7 @@ export default function LoginPage() {
       {/* Panel izquierdo — imagen */}
       <div className="hidden md:flex w-1/2 items-center justify-center bg-gray-100">
         <img
-          src="../fei.jpg"
+          src="../fei2.jpg"
           alt="Imagen de bienvenida"
           className="object-cover w-full h-full"
         />
