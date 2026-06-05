@@ -5,16 +5,11 @@ import { createClient } from '@/lib/supabase/client'
 import CalificacionEstrellas from '@/components/recursos/calificacion-estrellas'
 import BadgeSello from '@/components/recursos/badge-sello'
 import BotonContextoPedagogico from '@/components/recursos/boton-contexto-pedagogico'
+import { type DatosCuracion } from '@/components/curacion/formulario-curacion'
 
 type RolUsuario = 'docente' | 'estudiante' | 'administrador'
 
-type DatosCuracion = {
-  objetivoAprendizaje:       string
-  nivelDificultad:           'facil' | 'intermedio' | 'dificil'
-  tiempoEstimadoUso:         string
-  notasUso:                  string
-  perfilEstudianteSugerido:  string
-}
+// ── Tipos alineados con ISO/IEC 19788-5 ──────────────────────────────────────
 
 type RecursoDetalle = {
   id:                  string
@@ -26,15 +21,15 @@ type RecursoDetalle = {
   promedio:            number
   totalCalificaciones: number
   autor:               string
-  tieneSello:          boolean          // ← antes era estadoSello: 'sin_sello' | 'pendiente' | 'aprobado' | 'rechazado'
+  tieneSello:          boolean
   curacion?:           Partial<DatosCuracion>
 }
 
 type Props = {
-  idRecurso:           string
-  rol:                 RolUsuario
-  esMiembroAcademia?:  boolean
-  nombreUsuario?:      string
+  idRecurso:          string
+  rol:                RolUsuario
+  esMiembroAcademia?: boolean
+  nombreUsuario?:     string
 }
 
 function detectarTipo(formato: string, url: string): 'pdf' | 'video' | 'imagen' {
@@ -203,7 +198,12 @@ function VistaVideo({
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia = false, nombreUsuario }: Props) {
+export default function DetalleRecursoPage({
+  idRecurso,
+  rol,
+  esMiembroAcademia = false,
+  nombreUsuario,
+}: Props) {
   const [recurso, setRecurso]   = useState<RecursoDetalle | null>(null)
   const [cargando, setCargando] = useState(true)
   const supabase = createClient()
@@ -232,7 +232,6 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
         return
       }
 
-      // Si existe una fila → tiene sello. Si no → no tiene.
       const { data: selloData } = await supabase
         .from('sello_validacion')
         .select('id_validacion')
@@ -244,11 +243,13 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
         .select(`
           id_curacion,
           metadato_pedagogico (
-            objetivo_aprendizaje,
+            resultado_educacional,
             nivel_dificultad,
-            tiempo_estimado_uso,
-            notas_uso,
-            perfil_estudiante_sugerido
+            metodo_educacional,
+            tipo_recurso_educativo,
+            rol_audiencia,
+            tiempo_aprendizaje,
+            anotacion
           )
         `)
         .eq('id_recurso', idRecurso)
@@ -268,13 +269,15 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
         promedio:            data.promedio_calificacion ?? 0,
         totalCalificaciones: 0,
         autor:               rb?.autor ?? '',
-        tieneSello:          !!selloData,   // ← true si existe fila, false si no
+        tieneSello:          !!selloData,
         curacion: meta ? {
-          objetivoAprendizaje:      meta.objetivo_aprendizaje ?? '',
-          nivelDificultad:          meta.nivel_dificultad ?? 'facil',
-          tiempoEstimadoUso:        meta.tiempo_estimado_uso ?? '',
-          notasUso:                 meta.notas_uso ?? '',
-          perfilEstudianteSugerido: meta.perfil_estudiante_sugerido ?? '',
+          resultadoEducacional:  meta.resultado_educacional  ?? '',
+          nivelDificultad:       meta.nivel_dificultad       ?? 'intermedio',
+          metodoEducacional:     meta.metodo_educacional      ?? 'exposicion',
+          tipoRecursoEducativo:  meta.tipo_recurso_educativo  ?? 'narrativo_texto',
+          rolAudiencia:          meta.rol_audiencia           ?? 'estudiante',
+          tiempoAprendizaje:     meta.tiempo_aprendizaje      ?? '',
+          anotacion:             meta.anotacion               ?? '',
         } : undefined,
       })
       setCargando(false)
@@ -307,6 +310,7 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
 
+    // 1. Crear o recuperar recurso_curado
     let idCuracion: string | null = null
     const { data: curacionExistente } = await supabase
       .from('recurso_curado')
@@ -327,13 +331,16 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
       idCuracion = nuevaCuracion.id_curacion
     }
 
+    // 2. Upsert metadato_pedagogico con campos ISO/IEC 19788-5
     await supabase.from('metadato_pedagogico').upsert({
-      id_curacion:               idCuracion,
-      objetivo_aprendizaje:      datos.objetivoAprendizaje,
-      nivel_dificultad:          datos.nivelDificultad,
-      tiempo_estimado_uso:       datos.tiempoEstimadoUso,
-      notas_uso:                 datos.notasUso,
-      perfil_estudiante_sugerido: datos.perfilEstudianteSugerido,
+      id_curacion:           idCuracion,
+      resultado_educacional: datos.resultadoEducacional,   // DES0500
+      nivel_dificultad:      datos.nivelDificultad,        // DES0800
+      metodo_educacional:    datos.metodoEducacional,      // DES0100
+      tipo_recurso_educativo: datos.tipoRecursoEducativo,  // DES0200
+      rol_audiencia:         datos.rolAudiencia,           // DES0700
+      tiempo_aprendizaje:    datos.tiempoAprendizaje,      // DES0900
+      anotacion:             datos.anotacion,              // DES1000
     })
   }
 
@@ -357,9 +364,9 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     recurso,
     rol,
     esMiembroAcademia,
-    nombreDocente:    nombreUsuario,
-    onCalificar:      handleCalificar,
-    onOtorgarSello:   handleOtorgarSello,
+    nombreDocente:     nombreUsuario,
+    onCalificar:       handleCalificar,
+    onOtorgarSello:    handleOtorgarSello,
     onGuardarContexto: handleGuardarContexto,
   }
 

@@ -1,29 +1,22 @@
 'use client'
 
 import { useState } from 'react'
-import FormularioCuracion from '@/components/curacion/formulario-curacion'
-
-type DatosCuracion = {
-  objetivoAprendizaje: string
-  nivelDificultad: 'facil' | 'intermedio' | 'dificil'
-  tiempoEstimadoUso: string
-  notasUso: string
-  perfilEstudianteSugerido: string
-}
+import FormularioCuracion, { type DatosCuracion } from '@/components/curacion/formulario-curacion'
 
 type Props = {
-  idRecurso: string
-  datosIniciales?: Partial<DatosCuracion>
-  onGuardar?: (datos: DatosCuracion) => Promise<void>
+  idRecurso:        string
+  datosIniciales?:  Partial<DatosCuracion>
+  onGuardar?:       (datos: DatosCuracion) => Promise<void>
 }
 
-export default function BotonContextoPedagogico({
-  idRecurso,
-  datosIniciales,
-  onGuardar,
-}: Props) {
+export default function BotonContextoPedagogico({ idRecurso, datosIniciales, onGuardar }: Props) {
   const [abierto, setAbierto] = useState(false)
-  const tieneContexto = !!(datosIniciales?.objetivoAprendizaje || datosIniciales?.notasUso)
+
+  // Detectar si ya tiene contexto con los nuevos campos MLR
+  const tieneContexto = !!(
+    datosIniciales?.resultadoEducacional ||
+    datosIniciales?.anotacion
+  )
 
   const handleGuardar = async (datos: DatosCuracion) => {
     await onGuardar?.(datos)
