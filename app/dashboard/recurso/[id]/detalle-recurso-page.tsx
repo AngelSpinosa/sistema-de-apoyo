@@ -4,12 +4,10 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import CalificacionEstrellas from '@/components/recursos/calificacion-estrellas'
 import BadgeSello from '@/components/recursos/badge-sello'
-import BotonContextoPedagogico from '@/components/recursos/boton-contexto-pedagogico'
-import { type DatosCuracion } from '@/components/curacion/formulario-curacion'
+import FormularioCuracion, { type DatosCuracion } from '@/components/curacion/formulario-curacion'
+import PanelNotasPedagogicas, { type NotaPedagogica } from '@/components/recursos/panel-notas-pedagogicas'
 
 type RolUsuario = 'docente' | 'estudiante' | 'administrador'
-
-// ── Tipos alineados con ISO/IEC 19788-5 ──────────────────────────────────────
 
 type RecursoDetalle = {
   id:                  string
@@ -22,7 +20,6 @@ type RecursoDetalle = {
   totalCalificaciones: number
   autor:               string
   tieneSello:          boolean
-  curacion?:           Partial<DatosCuracion>
 }
 
 type Props = {
@@ -41,19 +38,65 @@ function detectarTipo(formato: string, url: string): 'pdf' | 'video' | 'imagen' 
   return 'pdf'
 }
 
+// ─── Modal URL compartida ─────────────────────────────────────────────────────
+function ModalCompartir({ url, onCerrar }: { url: string; onCerrar: () => void }) {
+  const [copiado, setCopiado] = useState(false)
+
+  const copiar = async () => {
+    await navigator.clipboard.writeText(url)
+    setCopiado(true)
+    setTimeout(() => setCopiado(false), 2000)
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
+      onClick={onCerrar}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-4 p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div>
+          <h2 className="text-base font-bold text-gray-900">Compartir recurso</h2>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Solo quienes accedan por este enlace verán el contexto pedagógico.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2">
+          <span className="text-xs text-gray-700 truncate flex-1 font-mono">{url}</span>
+          <button
+            onClick={copiar}
+            className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg bg-[#003087] text-white hover:bg-[#002070] transition"
+          >
+            {copiado ? '✓ Copiado' : 'Copiar'}
+          </button>
+        </div>
+        <button
+          onClick={onCerrar}
+          className="py-2 rounded-xl bg-gray-100 text-gray-600 text-sm font-medium hover:bg-gray-200 transition"
+        >
+          Listo
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Acciones docente ─────────────────────────────────────────────────────────
 function AccionesDocente({
-  recurso,
-  esMiembroAcademia,
-  nombreDocente,
-  onOtorgarSello,
-  onGuardarContexto,
+  recurso, esMiembroAcademia, nombreDocente, notas,
+  onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
 }: {
-  recurso:            RecursoDetalle
-  esMiembroAcademia:  boolean
-  nombreDocente?:     string
-  onOtorgarSello:     () => Promise<void>
-  onGuardarContexto:  (datos: DatosCuracion) => Promise<void>
+  recurso:           RecursoDetalle
+  esMiembroAcademia: boolean
+  nombreDocente?:    string
+  notas:             NotaPedagogica[]
+  onOtorgarSello:    () => Promise<void>
+  onAgregarNota:     () => void
+  onGuardarEdicion:  (datos: DatosCuracion, idMetadato: string) => Promise<void>
+  onCompartirNota:   (idMetadato: string) => Promise<void>
+  onEliminarNota:    (idMetadato: string) => Promise<void>
 }) {
   return (
     <div className="flex flex-col gap-3 pt-2 border-t border-gray-100">
@@ -63,27 +106,43 @@ function AccionesDocente({
         esMiembroAcademia={esMiembroAcademia}
         nombreDocente={nombreDocente}
       />
-      <BotonContextoPedagogico
-        idRecurso={recurso.id}
-        datosIniciales={recurso.curacion}
-        onGuardar={onGuardarContexto}
-      />
+
+      {notas.length > 0 && (
+        <PanelNotasPedagogicas
+          idRecurso={recurso.id}
+          notas={notas}
+          onGuardar={(datos: DatosCuracion, idMetadato?: string) => onGuardarEdicion(datos, idMetadato!)}
+          onCompartir={onCompartirNota}
+          onEliminar={onEliminarNota}
+        />
+      )}
+
+      <button
+        type="button"
+        onClick={onAgregarNota}
+        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 bg-white text-[#003087] border-[#003087] hover:bg-[#003087] hover:text-white"
+      >
+        <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current flex-shrink-0">
+          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+        </svg>
+        Añadir contexto pedagógico
+      </button>
     </div>
   )
 }
 
 // ─── Vista PDF ────────────────────────────────────────────────────────────────
 function VistaPDF({
-  recurso, rol, esMiembroAcademia, nombreDocente,
-  onCalificar, onOtorgarSello, onGuardarContexto,
+  recurso, rol, esMiembroAcademia, nombreDocente, notas,
+  onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
 }: {
-  recurso:            RecursoDetalle
-  rol:                RolUsuario
-  esMiembroAcademia:  boolean
-  nombreDocente?:     string
-  onCalificar:        (v: number) => Promise<void>
-  onOtorgarSello:     () => Promise<void>
-  onGuardarContexto:  (datos: DatosCuracion) => Promise<void>
+  recurso: RecursoDetalle; rol: RolUsuario; esMiembroAcademia: boolean; nombreDocente?: string
+  notas: NotaPedagogica[]
+  onCalificar: (v: number) => Promise<void>; onOtorgarSello: () => Promise<void>
+  onAgregarNota: () => void
+  onGuardarEdicion: (datos: DatosCuracion, idMetadato: string) => Promise<void>
+  onCompartirNota: (idMetadato: string) => Promise<void>
+  onEliminarNota: (idMetadato: string) => Promise<void>
 }) {
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden">
@@ -92,29 +151,22 @@ function VistaPDF({
           <h1 className="text-lg font-bold text-gray-900 leading-snug">{recurso.titulo}</h1>
           <p className="text-xs text-gray-400 uppercase tracking-wide mt-1">{recurso.tipo}</p>
           <p className="text-sm text-gray-600 font-medium">{recurso.fuente}</p>
-          {recurso.descripcion && (
-            <p className="text-sm text-gray-500 mt-1">{recurso.descripcion}</p>
-          )}
+          {recurso.descripcion && <p className="text-sm text-gray-500 mt-1">{recurso.descripcion}</p>}
         </div>
 
         <div className="flex flex-col gap-1.5">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Calificación</p>
           <CalificacionEstrellas
-            promedio={recurso.promedio}
-            total={recurso.totalCalificaciones}
-            onCalificar={onCalificar}
-            readonly={false}
-            size="md"
+            promedio={recurso.promedio} total={recurso.totalCalificaciones}
+            onCalificar={onCalificar} readonly={false} size="md"
           />
         </div>
 
         {rol === 'docente' && (
           <AccionesDocente
-            recurso={recurso}
-            esMiembroAcademia={esMiembroAcademia}
-            nombreDocente={nombreDocente}
-            onOtorgarSello={onOtorgarSello}
-            onGuardarContexto={onGuardarContexto}
+            recurso={recurso} esMiembroAcademia={esMiembroAcademia} nombreDocente={nombreDocente}
+            notas={notas} onOtorgarSello={onOtorgarSello} onAgregarNota={onAgregarNota}
+            onGuardarEdicion={onGuardarEdicion} onCompartirNota={onCompartirNota} onEliminarNota={onEliminarNota}
           />
         )}
       </aside>
@@ -123,9 +175,7 @@ function VistaPDF({
         {recurso.url ? (
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(recurso.url)}&embedded=true`}
-            title={recurso.titulo}
-            className="w-full h-full border-0"
-            aria-label={`PDF: ${recurso.titulo}`}
+            title={recurso.titulo} className="w-full h-full border-0"
           />
         ) : (
           <div className="flex items-center justify-center h-full">
@@ -139,16 +189,16 @@ function VistaPDF({
 
 // ─── Vista Video ──────────────────────────────────────────────────────────────
 function VistaVideo({
-  recurso, rol, esMiembroAcademia, nombreDocente,
-  onCalificar, onOtorgarSello, onGuardarContexto,
+  recurso, rol, esMiembroAcademia, nombreDocente, notas,
+  onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
 }: {
-  recurso:            RecursoDetalle
-  rol:                RolUsuario
-  esMiembroAcademia:  boolean
-  nombreDocente?:     string
-  onCalificar:        (v: number) => Promise<void>
-  onOtorgarSello:     () => Promise<void>
-  onGuardarContexto:  (datos: DatosCuracion) => Promise<void>
+  recurso: RecursoDetalle; rol: RolUsuario; esMiembroAcademia: boolean; nombreDocente?: string
+  notas: NotaPedagogica[]
+  onCalificar: (v: number) => Promise<void>; onOtorgarSello: () => Promise<void>
+  onAgregarNota: () => void
+  onGuardarEdicion: (datos: DatosCuracion, idMetadato: string) => Promise<void>
+  onCompartirNota: (idMetadato: string) => Promise<void>
+  onEliminarNota: (idMetadato: string) => Promise<void>
 }) {
   return (
     <div className="flex flex-col h-full overflow-y-auto">
@@ -172,11 +222,8 @@ function VistaVideo({
           {recurso.descripcion && <p className="text-sm text-gray-500">{recurso.descripcion}</p>}
           <div className="mt-3">
             <CalificacionEstrellas
-              promedio={recurso.promedio}
-              total={recurso.totalCalificaciones}
-              onCalificar={onCalificar}
-              readonly={false}
-              size="lg"
+              promedio={recurso.promedio} total={recurso.totalCalificaciones}
+              onCalificar={onCalificar} readonly={false} size="lg"
             />
           </div>
         </div>
@@ -184,11 +231,9 @@ function VistaVideo({
         {rol === 'docente' && (
           <div className="min-w-[220px]">
             <AccionesDocente
-              recurso={recurso}
-              esMiembroAcademia={esMiembroAcademia}
-              nombreDocente={nombreDocente}
-              onOtorgarSello={onOtorgarSello}
-              onGuardarContexto={onGuardarContexto}
+              recurso={recurso} esMiembroAcademia={esMiembroAcademia} nombreDocente={nombreDocente}
+              notas={notas} onOtorgarSello={onOtorgarSello} onAgregarNota={onAgregarNota}
+              onGuardarEdicion={onGuardarEdicion} onCompartirNota={onCompartirNota} onEliminarNota={onEliminarNota}
             />
           </div>
         )}
@@ -198,14 +243,12 @@ function VistaVideo({
 }
 
 // ─── Componente principal ─────────────────────────────────────────────────────
-export default function DetalleRecursoPage({
-  idRecurso,
-  rol,
-  esMiembroAcademia = false,
-  nombreUsuario,
-}: Props) {
-  const [recurso, setRecurso]   = useState<RecursoDetalle | null>(null)
-  const [cargando, setCargando] = useState(true)
+export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia = false, nombreUsuario }: Props) {
+  const [recurso,           setRecurso]           = useState<RecursoDetalle | null>(null)
+  const [notas,             setNotas]             = useState<NotaPedagogica[]>([])
+  const [cargando,          setCargando]          = useState(true)
+  const [formularioAbierto, setFormularioAbierto] = useState(false)
+  const [urlCompartida,     setUrlCompartida]     = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -213,163 +256,172 @@ export default function DetalleRecursoPage({
       const { data, error } = await supabase
         .from('recurso')
         .select(`
-          id_recurso,
-          titulo,
-          promedio_calificacion,
-          recurso_bruto (
-            url_fuente,
-            formato,
-            autor,
-            repositorio_externo (nombre_fuente)
-          )
+          id_recurso, titulo, promedio_calificacion,
+          recurso_bruto ( url_fuente, formato, autor, repositorio_externo (nombre_fuente) )
         `)
         .eq('id_recurso', idRecurso)
         .single()
 
-      if (error || !data) {
-        console.error('Código:', (error as any)?.code, '| Mensaje:', error?.message)
-        setCargando(false)
-        return
-      }
+      if (error || !data) { setCargando(false); return }
 
       const { data: selloData } = await supabase
-        .from('sello_validacion')
-        .select('id_validacion')
-        .eq('id_recurso', idRecurso)
-        .maybeSingle()
+        .from('sello_validacion').select('id_validacion').eq('id_recurso', idRecurso).maybeSingle()
 
-      const { data: metaData } = await supabase
-        .from('recurso_curado')
-        .select(`
-          id_curacion,
-          metadato_pedagogico (
-            resultado_educacional,
-            nivel_dificultad,
-            metodo_educacional,
-            tipo_recurso_educativo,
-            rol_audiencia,
-            tiempo_aprendizaje,
-            anotacion
-          )
-        `)
-        .eq('id_recurso', idRecurso)
-        .maybeSingle()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data: curacionData } = await supabase
+          .from('recurso_curado').select('id_curacion')
+          .eq('id_recurso', idRecurso).eq('id_docente', user.id).maybeSingle()
 
-      const meta = (metaData as any)?.metadato_pedagogico
-      const rb   = (data as any).recurso_bruto
-      const url  = rb?.url_fuente ?? ''
+        if (curacionData) {
+          const { data: metasData } = await supabase
+            .from('metadato_pedagogico').select('*').eq('id_curacion', curacionData.id_curacion)
 
+          if (metasData) {
+            setNotas(metasData.map((m: any) => ({
+              idMetadato:           m.id_metadato,
+              titulo:               m.titulo                ?? 'Sin título',
+              nivelDificultad:      m.nivel_dificultad      ?? '',
+              anotacion:            m.anotacion             ?? '',
+              resultadoEducacional: m.resultado_educacional ?? '',
+              metodoEducacional:    m.metodo_educacional    ?? '',
+              tipoRecursoEducativo: m.tipo_recurso_educativo ?? '',
+              rolAudiencia:         m.rol_audiencia         ?? '',
+              tiempoAprendizaje:    m.tiempo_aprendizaje    ?? '',
+            })))
+          }
+        }
+      }
+
+      const rb  = (data as any).recurso_bruto
+      const url = rb?.url_fuente ?? ''
       setRecurso({
-        id:                  data.id_recurso,
-        titulo:              data.titulo,
-        tipo:                detectarTipo(rb?.formato ?? '', url),
-        url,
-        fuente:              rb?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
-        descripcion:         rb?.autor ?? '',
-        promedio:            data.promedio_calificacion ?? 0,
-        totalCalificaciones: 0,
-        autor:               rb?.autor ?? '',
-        tieneSello:          !!selloData,
-        curacion: meta ? {
-          resultadoEducacional:  meta.resultado_educacional  ?? '',
-          nivelDificultad:       meta.nivel_dificultad       ?? 'intermedio',
-          metodoEducacional:     meta.metodo_educacional      ?? 'exposicion',
-          tipoRecursoEducativo:  meta.tipo_recurso_educativo  ?? 'narrativo_texto',
-          rolAudiencia:          meta.rol_audiencia           ?? 'estudiante',
-          tiempoAprendizaje:     meta.tiempo_aprendizaje      ?? '',
-          anotacion:             meta.anotacion               ?? '',
-        } : undefined,
+        id: data.id_recurso, titulo: data.titulo,
+        tipo: detectarTipo(rb?.formato ?? '', url), url,
+        fuente: rb?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
+        descripcion: rb?.autor ?? '', promedio: data.promedio_calificacion ?? 0,
+        totalCalificaciones: 0, autor: rb?.autor ?? '', tieneSello: !!selloData,
       })
       setCargando(false)
     }
-
     cargar()
   }, [idRecurso])
 
   const handleCalificar = async (valor: number) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
-    await supabase.from('calificacion').upsert({
-      id_recurso: idRecurso,
-      id_usuario: user.id,
-      puntuacion: valor,
-    })
+    await supabase.from('calificacion').upsert({ id_recurso: idRecurso, id_usuario: user.id, puntuacion: valor })
   }
 
   const handleOtorgarSello = async () => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
     await supabase.from('sello_validacion').insert({
-      id_recurso:         idRecurso,
-      id_docente:         user.id,
-      fecha_otorgamiento: new Date().toISOString(),
+      id_recurso: idRecurso, id_docente: user.id, fecha_otorgamiento: new Date().toISOString(),
     })
   }
 
-  const handleGuardarContexto = async (datos: DatosCuracion) => {
+  const obtenerIdCuracion = async (userId: string): Promise<string | null> => {
+    const { data: existente } = await supabase
+      .from('recurso_curado').select('id_curacion')
+      .eq('id_recurso', idRecurso).eq('id_docente', userId).maybeSingle()
+    if (existente) return existente.id_curacion
+
+    const { data: nuevo, error } = await supabase
+      .from('recurso_curado').insert({ id_recurso: idRecurso, id_docente: userId })
+      .select('id_curacion').single()
+    if (error) { console.error('Error creando recurso_curado:', error); return null }
+    return nuevo.id_curacion
+  }
+
+  const handleAgregarNota = async (datos: DatosCuracion) => {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return
+    const idCuracion = await obtenerIdCuracion(user.id)
+    if (!idCuracion) return
 
-    // 1. Crear o recuperar recurso_curado
-    let idCuracion: string | null = null
-    const { data: curacionExistente } = await supabase
-      .from('recurso_curado')
-      .select('id_curacion')
-      .eq('id_recurso', idRecurso)
-      .eq('id_docente', user.id)
-      .maybeSingle()
+    const { data: nueva, error } = await supabase
+      .from('metadato_pedagogico')
+      .insert({
+        id_curacion: idCuracion, titulo: datos.titulo,
+        resultado_educacional: datos.resultadoEducacional, nivel_dificultad: datos.nivelDificultad,
+        metodo_educacional: datos.metodoEducacional, tipo_recurso_educativo: datos.tipoRecursoEducativo,
+        rol_audiencia: datos.rolAudiencia, tiempo_aprendizaje: datos.tiempoAprendizaje, anotacion: datos.anotacion,
+      })
+      .select('*').single()
 
-    if (curacionExistente) {
-      idCuracion = curacionExistente.id_curacion
-    } else {
-      const { data: nuevaCuracion, error } = await supabase
-        .from('recurso_curado')
-        .insert({ id_recurso: idRecurso, id_docente: user.id })
-        .select('id_curacion')
-        .single()
-      if (error) { console.error('Error creando recurso_curado:', error); return }
-      idCuracion = nuevaCuracion.id_curacion
+    if (error || !nueva) { console.error('Error creando nota:', error); return }
+
+    const notaNueva: NotaPedagogica = {
+      idMetadato: nueva.id_metadato, titulo: nueva.titulo ?? 'Sin título',
+      nivelDificultad: nueva.nivel_dificultad ?? '', anotacion: nueva.anotacion ?? '',
+      resultadoEducacional: nueva.resultado_educacional ?? '', metodoEducacional: nueva.metodo_educacional ?? '',
+      tipoRecursoEducativo: nueva.tipo_recurso_educativo ?? '', rolAudiencia: nueva.rol_audiencia ?? '',
+      tiempoAprendizaje: nueva.tiempo_aprendizaje ?? '',
     }
-
-    // 2. Upsert metadato_pedagogico con campos ISO/IEC 19788-5
-    await supabase.from('metadato_pedagogico').upsert({
-      id_curacion:           idCuracion,
-      resultado_educacional: datos.resultadoEducacional,   // DES0500
-      nivel_dificultad:      datos.nivelDificultad,        // DES0800
-      metodo_educacional:    datos.metodoEducacional,      // DES0100
-      tipo_recurso_educativo: datos.tipoRecursoEducativo,  // DES0200
-      rol_audiencia:         datos.rolAudiencia,           // DES0700
-      tiempo_aprendizaje:    datos.tiempoAprendizaje,      // DES0900
-      anotacion:             datos.anotacion,              // DES1000
-    })
+    setNotas((prev) => [...prev, notaNueva])
+    setFormularioAbierto(false)
+    await handleCompartirNota(nueva.id_metadato)
   }
 
-  if (cargando) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-400 text-sm">Cargando recurso...</p>
-      </div>
-    )
+  const handleGuardarEdicion = async (datos: DatosCuracion, idMetadato: string) => {
+    const { error } = await supabase
+      .from('metadato_pedagogico')
+      .update({
+        titulo: datos.titulo, resultado_educacional: datos.resultadoEducacional,
+        nivel_dificultad: datos.nivelDificultad, metodo_educacional: datos.metodoEducacional,
+        tipo_recurso_educativo: datos.tipoRecursoEducativo, rol_audiencia: datos.rolAudiencia,
+        tiempo_aprendizaje: datos.tiempoAprendizaje, anotacion: datos.anotacion,
+      })
+      .eq('id_metadato', idMetadato)
+    if (error) { console.error('Error editando nota:', error); return }
+    setNotas((prev) => prev.map((n) => n.idMetadato === idMetadato ? { ...n, ...datos, idMetadato } : n))
   }
 
-  if (!recurso) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-red-400 text-sm">No se encontró el recurso.</p>
-      </div>
-    )
+  const handleCompartirNota = async (idMetadato: string) => {
+    const { data: existente } = await supabase
+      .from('recurso_compartido').select('token').eq('id_metadato', idMetadato).maybeSingle()
+
+    let token: string
+    if (existente) {
+      token = existente.token
+    } else {
+      const { data: nuevo, error } = await supabase
+        .from('recurso_compartido').insert({ id_metadato: idMetadato }).select('token').single()
+      if (error || !nuevo) { console.error('Error compartiendo nota:', error); return }
+      token = nuevo.token
+    }
+    setUrlCompartida(`${window.location.origin}/r/${token}`)
   }
 
-  const props = {
-    recurso,
-    rol,
-    esMiembroAcademia,
-    nombreDocente:     nombreUsuario,
-    onCalificar:       handleCalificar,
-    onOtorgarSello:    handleOtorgarSello,
-    onGuardarContexto: handleGuardarContexto,
+  const handleEliminarNota = async (idMetadato: string) => {
+    await supabase.from('recurso_compartido').delete().eq('id_metadato', idMetadato)
+    const { error } = await supabase.from('metadato_pedagogico').delete().eq('id_metadato', idMetadato)
+    if (error) { console.error('Error eliminando nota:', error); return }
+    setNotas((prev) => prev.filter((n) => n.idMetadato !== idMetadato))
   }
 
-  if (recurso.tipo === 'video') return <VistaVideo {...props} />
-  return <VistaPDF {...props} />
+  if (cargando) return <div className="flex items-center justify-center h-screen"><p className="text-gray-400 text-sm">Cargando recurso...</p></div>
+  if (!recurso)  return <div className="flex items-center justify-center h-screen"><p className="text-red-400 text-sm">No se encontró el recurso.</p></div>
+
+  const vistaProps = {
+    recurso, rol, esMiembroAcademia, nombreDocente: nombreUsuario, notas,
+    onCalificar: handleCalificar, onOtorgarSello: handleOtorgarSello,
+    onAgregarNota: () => setFormularioAbierto(true),
+    onGuardarEdicion: handleGuardarEdicion,
+    onCompartirNota: handleCompartirNota,
+    onEliminarNota: handleEliminarNota,
+  }
+
+  return (
+    <>
+      {formularioAbierto && (
+        <FormularioCuracion idRecurso={idRecurso} onGuardar={handleAgregarNota} onCerrar={() => setFormularioAbierto(false)} />
+      )}
+      {urlCompartida && (
+        <ModalCompartir url={urlCompartida} onCerrar={() => setUrlCompartida(null)} />
+      )}
+      {recurso.tipo === 'video' ? <VistaVideo {...vistaProps} /> : <VistaPDF {...vistaProps} />}
+    </>
+  )
 }

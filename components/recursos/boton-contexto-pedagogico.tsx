@@ -7,12 +7,12 @@ type Props = {
   idRecurso:        string
   datosIniciales?:  Partial<DatosCuracion>
   onGuardar?:       (datos: DatosCuracion) => Promise<void>
+  onCompartir?:     () => Promise<void>   // ← nuevo: se llama tras guardar con éxito
 }
 
-export default function BotonContextoPedagogico({ idRecurso, datosIniciales, onGuardar }: Props) {
+export default function BotonContextoPedagogico({ idRecurso, datosIniciales, onGuardar, onCompartir }: Props) {
   const [abierto, setAbierto] = useState(false)
 
-  // Detectar si ya tiene contexto con los nuevos campos MLR
   const tieneContexto = !!(
     datosIniciales?.resultadoEducacional ||
     datosIniciales?.anotacion
@@ -20,6 +20,9 @@ export default function BotonContextoPedagogico({ idRecurso, datosIniciales, onG
 
   const handleGuardar = async (datos: DatosCuracion) => {
     await onGuardar?.(datos)
+    setAbierto(false)
+    // Tras guardar el contexto, disparar el flujo de compartir
+    await onCompartir?.()
   }
 
   return (
