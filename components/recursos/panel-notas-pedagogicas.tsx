@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 import FormularioCuracion, { type DatosCuracion } from '@/components/curacion/formulario-curacion'
+import { createPortal } from 'react-dom'
+
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 export type NotaPedagogica = {
@@ -316,18 +318,19 @@ export default function PanelNotasPedagogicas({
       </div>
 
       {/* Modal vista previa */}
-      {notaSeleccionada && !editando && (
+      {notaSeleccionada && !editando && createPortal (
         <ModalNota
           nota={notaSeleccionada}
           onCerrar={() => setNotaSeleccionada(null)}
           onCompartir={handleCompartir}
           onEditar={() => setEditando(true)}
           onEliminar={handleEliminar}
-        />
+        />,
+        document.body
       )}
 
       {/* Formulario de edición */}
-      {notaSeleccionada && editando && (
+      {notaSeleccionada && editando && createPortal (
         <FormularioCuracion
           idRecurso={idRecurso}
           datosIniciales={{
@@ -342,7 +345,8 @@ export default function PanelNotasPedagogicas({
           }}
           onGuardar={handleGuardarEdicion}
           onCerrar={() => { setEditando(false); setNotaSeleccionada(null) }}
-        />
+        />,
+        document.body
       )}
 
     </>

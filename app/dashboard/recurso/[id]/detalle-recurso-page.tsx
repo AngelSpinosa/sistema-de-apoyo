@@ -395,12 +395,13 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
   }
 
   const handleEliminarNota = async (idMetadato: string) => {
-    await supabase.from('recurso_compartido').delete().eq('id_metadato', idMetadato)
-    const { error } = await supabase.from('metadato_pedagogico').delete().eq('id_metadato', idMetadato)
+    // recurso_compartido se elimina solo por CASCADE
+    const { error } = await supabase
+      .from('metadato_pedagogico').delete().eq('id_metadato', idMetadato)
     if (error) { console.error('Error eliminando nota:', error); return }
     setNotas((prev) => prev.filter((n) => n.idMetadato !== idMetadato))
   }
-
+  
   if (cargando) return <div className="flex items-center justify-center h-screen"><p className="text-gray-400 text-sm">Cargando recurso...</p></div>
   if (!recurso)  return <div className="flex items-center justify-center h-screen"><p className="text-red-400 text-sm">No se encontró el recurso.</p></div>
 
