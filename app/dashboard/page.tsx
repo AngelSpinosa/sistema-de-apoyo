@@ -156,6 +156,8 @@ export default function DashboardPage() {
                   tipo={r.tipo}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
+                  urlFuente={r.url}
+                  formato={r.tipo}
                   onClick={() => handleVerRecurso(r.id)}
                 />
               ))
@@ -183,6 +185,8 @@ export default function DashboardPage() {
                   fuente={r.fuente}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
+                  urlFuente={r.url}         // <-- CORREGIDO: Usamos r.url
+                  formato={r.tipo}          // <-- CORREGIDO: Usamos r.tipo
                   onClick={() => handleVerRecurso(r.id)}
                 />
               ))}
@@ -204,6 +208,8 @@ export default function DashboardPage() {
                   fuente={r.fuente}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
+                  urlFuente={r.url}         // <-- CORREGIDO: Usamos r.url
+                  formato={r.tipo}          // <-- CORREGIDO: Usamos r.tipo
                   onClick={() => handleVerRecurso(r.id)}
                 />
               ))}

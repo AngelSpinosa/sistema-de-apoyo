@@ -6,6 +6,8 @@ import CalificacionEstrellas from '@/components/recursos/calificacion-estrellas'
 import BadgeSello from '@/components/recursos/badge-sello'
 import FormularioCuracion, { type DatosCuracion } from '@/components/curacion/formulario-curacion'
 import PanelNotasPedagogicas, { type NotaPedagogica } from '@/components/recursos/panel-notas-pedagogicas'
+import { ExternalLink } from 'lucide-react'
+import { generarMiniaturaCloudinary } from '@/lib/cloudinary/utils'
 
 type RolUsuario = 'docente' | 'estudiante' | 'administrador'
 
@@ -144,6 +146,10 @@ function VistaPDF({
   onCompartirNota: (idMetadato: string) => Promise<void>
   onEliminarNota: (idMetadato: string) => Promise<void>
 }) {
+  
+  // Usamos nuestra ruta API como proxy para limpiar los encabezados de Cloudinary
+  const proxyUrl = recurso.url ? `/api/proxy-pdf?url=${encodeURIComponent(recurso.url)}` : ''
+
   return (
     <div className="flex h-[calc(100vh-0px)] overflow-hidden">
       <aside className="w-72 flex-shrink-0 flex flex-col gap-5 p-6 overflow-y-auto border-r border-gray-100 bg-white">
@@ -171,14 +177,55 @@ function VistaPDF({
         )}
       </aside>
 
-      <main className="flex-1 bg-gray-50 overflow-hidden">
-        {recurso.url ? (
-          <iframe
-            src={`https://docs.google.com/viewer?url=${encodeURIComponent(recurso.url)}&embedded=true`}
-            title={recurso.titulo} className="w-full h-full border-0"
-          />
+      <main className="flex-1 bg-gray-100 flex flex-col overflow-hidden relative">
+        {proxyUrl ? (
+          <>
+            <div className="w-full bg-white border-b border-gray-200 p-3 flex justify-between items-center shadow-sm z-10">
+              <span className="text-xs font-medium text-gray-500 px-2 flex items-center gap-2">
+                <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+                Visor Integrado Seguro
+              </span>
+              <a 
+                href={recurso.url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-xs font-semibold text-gray-600 hover:text-[#003087] bg-gray-50 hover:bg-gray-100 flex items-center gap-1.5 px-3 py-1.5 rounded-md transition"
+              >
+                Abrir en otra pestaña
+                <ExternalLink size={14} />
+              </a>
+            </div>
+            
+            <div className="w-full flex-1 relative bg-gray-50">
+              {/* Al apuntar a /api/proxy-pdf, el navegador confía en el origen y lo muestra en pantalla */}
+              <object
+                data={proxyUrl}
+                type="application/pdf"
+                className="w-full h-full absolute inset-0 border-0"
+              >
+                {/* Este fallback SOLO se mostrará en celulares (iOS/Android) donde los navegadores NO traen lector PDF integrado */}
+                <div className="flex flex-col items-center justify-center h-full p-8 text-center bg-gray-50 overflow-y-auto">
+                  <div className="w-16 h-16 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">Visor nativo no disponible</h3>
+                  <p className="text-sm text-gray-500 max-w-md mx-auto mb-6">
+                    Tu navegador (o dispositivo móvil) no cuenta con soporte nativo para visualizar documentos internamente.
+                  </p>
+                  <a
+                    href={recurso.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-6 py-2.5 bg-[#003087] text-white font-medium rounded-lg hover:bg-[#002070] transition shadow-sm"
+                  >
+                    Abrir documento en el navegador
+                  </a>
+                </div>
+              </object>
+            </div>
+          </>
         ) : (
-          <div className="flex items-center justify-center h-full">
+          <div className="flex items-center justify-center h-full bg-gray-50">
             <p className="text-gray-400 text-sm">URL del documento no disponible.</p>
           </div>
         )}
@@ -200,11 +247,19 @@ function VistaVideo({
   onCompartirNota: (idMetadato: string) => Promise<void>
   onEliminarNota: (idMetadato: string) => Promise<void>
 }) {
+  // Generamos el thumbnail para el poster del video usando la utilidad
+  const posterUrl = generarMiniaturaCloudinary(recurso.url, 'video');
+
   return (
     <div className="flex flex-col h-full overflow-y-auto">
       <div className="w-full bg-black">
         {recurso.url ? (
-          <video src={recurso.url} controls className="w-full max-h-[60vh] object-contain">
+          <video 
+            src={recurso.url} 
+            poster={posterUrl} // MODIFICADO: Agregada la miniatura
+            controls 
+            className="w-full max-h-[60vh] object-contain"
+          >
             Tu navegador no soporta la reproducción de video.
           </video>
         ) : (
@@ -395,7 +450,6 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
   }
 
   const handleEliminarNota = async (idMetadato: string) => {
-    // recurso_compartido se elimina solo por CASCADE
     const { error } = await supabase
       .from('metadato_pedagogico').delete().eq('id_metadato', idMetadato)
     if (error) { console.error('Error eliminando nota:', error); return }
