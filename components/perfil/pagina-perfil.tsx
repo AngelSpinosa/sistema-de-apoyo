@@ -7,12 +7,16 @@ import TarjetaInfoPerfil from '@/components/perfil/tarjeta-info-perfil'
 import FormularioEditarPerfil from '@/components/perfil/formulario-editar-perfil'
 import FormularioCambiarContrasena from '@/components/perfil/formulario-cambiar-contrasena'
 
+// 1. Aquí está la corrección: Añadimos carrera, semestre y academias al tipo
 type DatosPerfil = {
   nombre: string
   apellidos: string
   correo: string
   rol: string
   fotoUrl?: string
+  carrera?: string
+  semestre?: string
+  academias?: string[]
 }
 
 type DatosEditables = {
@@ -40,10 +44,7 @@ export default function PaginaPerfil({ datosIniciales, userId }: Props) {
   const [modalContrasena, setModalContrasena] = useState(false)
   const supabase = createClient()
 
-  // pagina-perfil.tsx  — solo cambia handleGuardarPerfil
-
-    const handleGuardarPerfil = async (nuevos: DatosEditables) => {
-    // 1. Subir foto a tu API Route (que firma y sube a Cloudinary)
+  const handleGuardarPerfil = async (nuevos: DatosEditables) => {
     let fotoUrl = datos.fotoUrl
     if (nuevos.foto) {
       const formData = new FormData()
@@ -51,7 +52,7 @@ export default function PaginaPerfil({ datosIniciales, userId }: Props) {
       formData.append('folder',   'usuarios/perfiles')
       formData.append('publicId', userId)
 
-      const res = await fetch('/api/imagenes/subir', {   // ← nueva ruta unificada
+      const res = await fetch('/api/imagenes/subir', {
         method: 'POST',
         body: formData,
       })
@@ -65,7 +66,6 @@ export default function PaginaPerfil({ datosIniciales, userId }: Props) {
       fotoUrl = json.url
     }
 
-    // 2. Actualizar tabla usuario
     await supabase.from('usuario').update({
       nombre:                nuevos.nombre,
       apellidos:             nuevos.apellidos,
@@ -73,7 +73,6 @@ export default function PaginaPerfil({ datosIniciales, userId }: Props) {
       url_fotografia:        fotoUrl,
     }).eq('id_usuario', userId)
 
-    // 3. Actualizar correo en auth si cambió
     if (nuevos.correo !== datos.correo) {
       await supabase.auth.updateUser({ email: nuevos.correo })
     }
@@ -136,11 +135,16 @@ export default function PaginaPerfil({ datosIniciales, userId }: Props) {
 
           {/* Tarjeta de información */}
           <div className="w-full flex flex-col gap-2">
-            <p className="text-sm text-gray-500 font-medium text-center">Información personal</p>
+            <p className="text-sm text-gray-500 font-medium text-center">Información personal e institucional</p>
+            {/* 2. Aquí está la otra corrección: Pasamos todos los datos a la tarjeta */}
             <TarjetaInfoPerfil
               nombre={datos.nombre}
               apellidos={datos.apellidos}
               correo={datos.correo}
+              rol={datos.rol}
+              carrera={datos.carrera}
+              semestre={datos.semestre}
+              academias={datos.academias}
             />
           </div>
 

@@ -8,9 +8,12 @@ type DatosPerfil = {
   correo: string
   rol: string
   fotoUrl?: string
+  carrera?: string
+  semestre?: string
+  academias?: string[]
 }
 
-// Tipo que recibe el formulario de edición (sin rol)
+// Tipo que recibe el formulario de edición (solo los editables reales)
 type DatosEditables = {
   nombre: string
   apellidos: string
@@ -29,6 +32,7 @@ export default function FormularioEditarPerfil({ datosIniciales, onGuardar, onCe
   const [nombre, setNombre]       = useState(datosIniciales.nombre)
   const [apellidos, setApellidos] = useState(datosIniciales.apellidos)
   const [correo, setCorreo]       = useState(datosIniciales.correo)
+  
   const [foto, setFoto]           = useState<File | null>(null)
   const [preview, setPreview]     = useState<string | null>(datosIniciales.fotoUrl ?? null)
   const [guardando, setGuardando] = useState(false)
