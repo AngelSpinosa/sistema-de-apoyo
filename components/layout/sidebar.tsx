@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Menu, Bookmark, Settings, User, Home } from 'lucide-react'
+import { Menu, Bookmark, Settings, User, Home, History } from 'lucide-react'
 import { useRouter, usePathname } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { createPortal } from 'react-dom'
@@ -77,6 +77,12 @@ export default function Sidebar() {
       ruta: '/configuracion',
       matchRutas: ['/configuracion'],
     },
+    {
+      icono: <History size={22} />,
+      etiqueta: 'Historial',
+      ruta: '/dashboard/historial',
+      matchRutas: ['/dashboard/historial'],
+    }
   ]
 
   return (

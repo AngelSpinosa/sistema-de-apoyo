@@ -357,6 +357,20 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
         descripcion: rb?.autor ?? '', promedio: data.promedio_calificacion ?? 0,
         totalCalificaciones: 0, autor: rb?.autor ?? '', tieneSello: !!selloData,
       })
+
+      // REGISTRAR HISTORIAL DE VISTA
+      if (user) {
+        const { error: errorVista } = await supabase.from('historial_vistas').upsert({
+          id_usuario: user.id,
+          id_recurso: idRecurso,
+          fecha_vista: new Date().toISOString()
+        }, { onConflict: 'id_usuario,id_recurso' }) // <-- IMPORTANTE: sin espacios
+
+        if (errorVista) {
+          console.error('Error al registrar la vista en el historial:', errorVista)
+        }
+      }
+
       setCargando(false)
     }
     cargar()

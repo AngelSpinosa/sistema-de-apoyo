@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [terminoBusqueda, setTerminoBusqueda] = useState('')
   const [filtrosVisible, setFiltrosVisible] = useState(false)
   const [recursos, setRecursos] = useState<Recurso[]>([])
+  const [recursosSeguirViendo, setRecursosSeguirViendo] = useState<Recurso[]>([])
   const [cargando, setCargando] = useState(true)
   const [filtrosActivos, setFiltrosActivos] = useState({
     formato: [] as string[],
@@ -74,14 +75,49 @@ export default function DashboardPage() {
       }))
 
       setRecursos(mapeados)
+
+      // Cargar "Seguir Viendo" desde historial
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData.user) {
+        const { data: vistas } = await supabase
+          .from('historial_vistas')
+          .select('id_recurso')
+          .eq('id_usuario', userData.user.id)
+          .order('fecha_vista', { ascending: false })
+          .limit(3)
+
+        if (vistas && vistas.length > 0) {
+          const vistosIds = vistas.map(v => v.id_recurso)
+          const vistosRecursos = vistosIds.map(id => mapeados.find(r => r.id === id)).filter(Boolean) as Recurso[]
+          // Si el historial devuelve menos de 3, rellenamos con otros recursos
+          const faltantes = 3 - vistosRecursos.length
+          const relleno = faltantes > 0 ? mapeados.filter(m => !vistosIds.includes(m.id)).slice(0, faltantes) : []
+          
+          setRecursosSeguirViendo([...vistosRecursos, ...relleno])
+        } else {
+          setRecursosSeguirViendo(mapeados.slice(0, 3))
+        }
+      } else {
+        setRecursosSeguirViendo(mapeados.slice(0, 3))
+      }
+
       setCargando(false)
     }
 
     cargarRecursos()
   }, [])
 
-  // Navega al detalle del recurso
-  const handleVerRecurso = (id: string) => {
+  // Navega al detalle del recurso y guarda la búsqueda si aplica
+  const handleVerRecurso = async (id: string, terminoGuardar?: string) => {
+    if (terminoGuardar && terminoGuardar.trim().length > 0) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await supabase.from('historial_busqueda').insert({
+          id_usuario: user.id,
+          termino: terminoGuardar.trim()
+        })
+      }
+    }
     router.push(`/dashboard/recurso/${id}`)
   }
 
@@ -108,7 +144,7 @@ export default function DashboardPage() {
     [temaActivo, recursos]
   )
 
-  const recursosSeguirViendo = recursos.slice(0, 3)
+  // ELIMINAR ESTA LÍNEA ANTIGUA: const recursosSeguirViendo = recursos.slice(0, 3)
 
   if (cargando) {
     return (
@@ -158,7 +194,7 @@ export default function DashboardPage() {
                   promedio={r.promedio}
                   urlFuente={r.url}
                   formato={r.tipo}
-                  onClick={() => handleVerRecurso(r.id)}
+                  onClick={() => handleVerRecurso(r.id, terminoBusqueda)}
                 />
               ))
             ) : (
@@ -180,13 +216,13 @@ export default function DashboardPage() {
               {recursosSeguirViendo.map((r) => (
                 <TarjetaRecurso
                   key={r.id}
-                  idRecurso={r.id}          // ← agregar
+                  idRecurso={r.id}
                   titulo={r.titulo}
                   fuente={r.fuente}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
-                  urlFuente={r.url}         // <-- CORREGIDO: Usamos r.url
-                  formato={r.tipo}          // <-- CORREGIDO: Usamos r.tipo
+                  urlFuente={r.url}         // <-- AÑADIDO
+                  formato={r.tipo}          // <-- AÑADIDO
                   onClick={() => handleVerRecurso(r.id)}
                 />
               ))}
@@ -203,13 +239,13 @@ export default function DashboardPage() {
               {recursosPorTema.map((r) => (
                 <TarjetaRecurso
                   key={r.id}
-                  idRecurso={r.id}          // ← agregar
+                  idRecurso={r.id}
                   titulo={r.titulo}
                   fuente={r.fuente}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
-                  urlFuente={r.url}         // <-- CORREGIDO: Usamos r.url
-                  formato={r.tipo}          // <-- CORREGIDO: Usamos r.tipo
+                  urlFuente={r.url}         // <-- AÑADIDO
+                  formato={r.tipo}          // <-- AÑADIDO
                   onClick={() => handleVerRecurso(r.id)}
                 />
               ))}
