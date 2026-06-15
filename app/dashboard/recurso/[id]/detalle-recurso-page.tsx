@@ -8,6 +8,7 @@ import FormularioCuracion, { type DatosCuracion } from '@/components/curacion/fo
 import PanelNotasPedagogicas, { type NotaPedagogica } from '@/components/recursos/panel-notas-pedagogicas'
 import { ExternalLink } from 'lucide-react'
 import { generarMiniaturaCloudinary } from '@/lib/cloudinary/utils'
+import { useCalificacion } from '@/hooks/use-calificacion'
 
 type RolUsuario = 'docente' | 'estudiante' | 'administrador'
 
@@ -136,10 +137,12 @@ function AccionesDocente({
 // ─── Vista PDF ────────────────────────────────────────────────────────────────
 function VistaPDF({
   recurso, rol, esMiembroAcademia, nombreDocente, notas,
+  promedio, total, miCalificacion,
   onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
 }: {
   recurso: RecursoDetalle; rol: RolUsuario; esMiembroAcademia: boolean; nombreDocente?: string
   notas: NotaPedagogica[]
+  promedio: number; total: number; miCalificacion: number
   onCalificar: (v: number) => Promise<void>; onOtorgarSello: () => Promise<void>
   onAgregarNota: () => void
   onGuardarEdicion: (datos: DatosCuracion, idMetadato: string) => Promise<void>
@@ -163,7 +166,7 @@ function VistaPDF({
         <div className="flex flex-col gap-1.5">
           <p className="text-xs text-gray-400 uppercase tracking-wide">Calificación</p>
           <CalificacionEstrellas
-            promedio={recurso.promedio} total={recurso.totalCalificaciones}
+            promedio={promedio} total={total} miCalificacion={miCalificacion}
             onCalificar={onCalificar} readonly={false} size="md"
           />
         </div>
@@ -237,10 +240,12 @@ function VistaPDF({
 // ─── Vista Video ──────────────────────────────────────────────────────────────
 function VistaVideo({
   recurso, rol, esMiembroAcademia, nombreDocente, notas,
+  promedio, total, miCalificacion,
   onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
 }: {
   recurso: RecursoDetalle; rol: RolUsuario; esMiembroAcademia: boolean; nombreDocente?: string
   notas: NotaPedagogica[]
+  promedio: number; total: number; miCalificacion: number
   onCalificar: (v: number) => Promise<void>; onOtorgarSello: () => Promise<void>
   onAgregarNota: () => void
   onGuardarEdicion: (datos: DatosCuracion, idMetadato: string) => Promise<void>
@@ -277,7 +282,7 @@ function VistaVideo({
           {recurso.descripcion && <p className="text-sm text-gray-500">{recurso.descripcion}</p>}
           <div className="mt-3">
             <CalificacionEstrellas
-              promedio={recurso.promedio} total={recurso.totalCalificaciones}
+              promedio={promedio} total={total} miCalificacion={miCalificacion}
               onCalificar={onCalificar} readonly={false} size="lg"
             />
           </div>
@@ -305,6 +310,13 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
   const [formularioAbierto, setFormularioAbierto] = useState(false)
   const [urlCompartida,     setUrlCompartida]     = useState<string | null>(null)
   const supabase = createClient()
+
+  const {
+    promedio: promedioCalificacion,
+    total: totalCalificaciones,
+    miCalificacion,
+    calificar,
+  } = useCalificacion(idRecurso)
 
   useEffect(() => {
     async function cargar() {
@@ -377,9 +389,7 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
   }, [idRecurso])
 
   const handleCalificar = async (valor: number) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('calificacion').upsert({ id_recurso: idRecurso, id_usuario: user.id, puntuacion: valor })
+    await calificar(valor)
   }
 
   const handleOtorgarSello = async () => {
@@ -475,6 +485,7 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
 
   const vistaProps = {
     recurso, rol, esMiembroAcademia, nombreDocente: nombreUsuario, notas,
+    promedio: promedioCalificacion, total: totalCalificaciones, miCalificacion,
     onCalificar: handleCalificar, onOtorgarSello: handleOtorgarSello,
     onAgregarNota: () => setFormularioAbierto(true),
     onGuardarEdicion: handleGuardarEdicion,

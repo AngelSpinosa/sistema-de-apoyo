@@ -32,10 +32,10 @@ export default function LoginPage() {
       .select('rol')
       .eq('id_usuario', data.user.id)
       .single()
-    
-      console.log('ID del usuario:', data.user.id)
-      console.log('Perfil obtenido:', perfil)
-      console.log('Error del perfil:', errorPerfil)
+
+    console.log('ID del usuario:', data.user.id)
+    console.log('Perfil obtenido:', perfil)
+    console.log('Error del perfil:', errorPerfil)
 
     const rutas: Record<string, string> = {
       docente: '/dashboard',
@@ -59,12 +59,14 @@ export default function LoginPage() {
       </div>
 
       {/* Panel derecho — formulario */}
-      <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-[#003087] px-10">
+      <div className="flex w-full md:w-1/2 flex-col items-center justify-center bg-uv-azul px-10">
 
-        <h1 className="text-white text-3xl font-bold mb-2">
-          Sistema de apoyo
-        </h1>
-        <p className="text-white text-sm mb-10">Inicio de sesión</p>
+        {/* Logo DUNA */}
+        <img
+          src="/logo-login.png"
+          alt="DUNA - Sistema de apoyo"
+          className="w-80 h-auto mb-2"
+        />
 
         <div className="flex flex-col w-full max-w-sm gap-5">
 
@@ -78,7 +80,8 @@ export default function LoginPage() {
               placeholder="Ingresa tu nombre de usuario/Correo I."
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="rounded-full px-4 py-2 text-sm outline-none text-gray-800 placeholder-gray-400 border border-gray-300"            />
+              className="rounded-full px-4 py-2 text-sm outline-none text-gray-800 placeholder-gray-400 border border-gray-300 transition focus:border-uv-verde focus:ring-2 focus:ring-uv-verde"
+            />
           </div>
 
           {/* Campo contraseña */}
@@ -90,7 +93,8 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
-              className="rounded-full px-4 py-2 text-sm outline-none text-gray-800 placeholder-gray-400 border border-gray-300"            />
+              className="rounded-full px-4 py-2 text-sm outline-none text-gray-800 placeholder-gray-400 border border-gray-300 transition focus:border-uv-verde focus:ring-2 focus:ring-uv-verde"
+            />
           </div>
 
           {/* Error */}
@@ -103,7 +107,7 @@ export default function LoginPage() {
             <button
               onClick={handleLogin}
               disabled={loading}
-              className="bg-white text-[#003087] font-semibold px-10 py-2 rounded-full hover:bg-gray-100 transition disabled:opacity-50"
+              className="bg-uv-verde text-white font-semibold px-10 py-2 rounded-full hover:opacity-90 transition disabled:opacity-50"
             >
               {loading ? 'Ingresando...' : 'INGRESAR'}
             </button>

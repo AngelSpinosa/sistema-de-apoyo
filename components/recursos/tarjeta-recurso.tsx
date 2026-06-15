@@ -12,6 +12,7 @@ type Props = {
   fuente: string
   descripcion: string
   promedio: number
+  total?: number
   miniatura?: string
   urlFuente?: string 
   formato?: string
@@ -24,6 +25,7 @@ export default function TarjetaRecurso({
   fuente,
   descripcion,
   promedio,
+  total,
   miniatura,
   urlFuente,
   formato,
@@ -67,18 +69,23 @@ export default function TarjetaRecurso({
               <span className="text-xs text-gray-400 shrink-0">{fuente}</span>
             </div>
 
-            <div className="flex gap-0.5 mt-0.5">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star
-                  key={i}
-                  size={12}
-                  className={
-                    i <= Math.round(promedio)
-                      ? 'fill-yellow-400 text-yellow-400'
-                      : 'fill-gray-200 text-gray-200'
-                  }
-                />
-              ))}
+            <div className="flex items-center gap-1.5 mt-0.5">
+              <div className="flex gap-0.5">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <Star
+                    key={i}
+                    size={12}
+                    className={
+                      i <= Math.round(promedio)
+                        ? 'fill-yellow-400 text-yellow-400'
+                        : 'fill-gray-200 text-gray-200'
+                    }
+                  />
+                ))}
+              </div>
+              {typeof total === 'number' && total > 0 && (
+                <span className="text-xs text-gray-400">({total})</span>
+              )}
             </div>
 
             <p className="text-xs text-gray-400 truncate mt-1">{descripcion}</p>

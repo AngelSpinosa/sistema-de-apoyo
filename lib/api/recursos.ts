@@ -8,10 +8,38 @@ export async function getRecursosActivos() {
     .from('recurso')
     .select('*, recurso_bruto(*)')
     .eq('disponibilidad', 'activo')
-    .order('promedio_calificacion', { ascending: false })
 
   if (error) throw new Error(error.message)
-  return data
+
+  // vista_calificacion_recurso no tiene FK hacia 'recurso', así que no se
+  // puede embeber con PostgREST. Se consulta por separado y se mapea.
+  const { data: calificaciones, error: errorCalif } = await supabase
+    .from('vista_calificacion_recurso')
+    .select('id_recurso, promedio, total_calificaciones')
+
+  if (errorCalif) throw new Error(errorCalif.message)
+
+  const mapaCalificaciones = new Map<string, { promedio: number; total: number }>()
+  ;(calificaciones ?? []).forEach((c: any) => {
+    mapaCalificaciones.set(c.id_recurso, {
+      promedio: c.promedio ?? 0,
+      total: c.total_calificaciones ?? 0,
+    })
+  })
+
+  const conPromedio = (data ?? []).map((r: any) => {
+    const calif = mapaCalificaciones.get(r.id_recurso)
+    return {
+      ...r,
+      promedio_calificacion: calif?.promedio ?? 0,
+      total_calificaciones: calif?.total ?? 0,
+    }
+  })
+
+  // Ordenamos por promedio en memoria
+  conPromedio.sort((a, b) => b.promedio_calificacion - a.promedio_calificacion)
+
+  return conPromedio
 }
 
 export async function getRecursoById(id: string) {
@@ -29,7 +57,20 @@ export async function getRecursoById(id: string) {
     .single()
 
   if (error) throw new Error(error.message)
-  return data
+
+  const { data: calif, error: errorCalif } = await supabase
+    .from('vista_calificacion_recurso')
+    .select('promedio, total_calificaciones')
+    .eq('id_recurso', id)
+    .maybeSingle()
+
+  if (errorCalif) throw new Error(errorCalif.message)
+
+  return {
+    ...data,
+    promedio_calificacion: calif?.promedio ?? 0,
+    total_calificaciones: calif?.total_calificaciones ?? 0,
+  }
 }
 
 export async function getRecursosPorRepositorio(idRepositorio: string) {

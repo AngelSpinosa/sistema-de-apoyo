@@ -13,6 +13,7 @@ type Props = {
   descripcion: string
   tipo: string
   promedio: number
+  total?: number
   miniatura?: string
   urlFuente?: string
   formato?: string
@@ -26,6 +27,7 @@ export default function TarjetaRecursoBusqueda({
   descripcion,
   tipo,
   promedio,
+  total,
   miniatura,
   urlFuente,
   formato,
@@ -61,18 +63,23 @@ export default function TarjetaRecursoBusqueda({
 
         <div className="flex flex-col gap-1 flex-1 min-w-0">
           <span className="text-base font-semibold text-gray-900">{titulo}</span>
-          <div className="flex gap-0.5">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Star
-                key={i}
-                size={14}
-                className={
-                  i <= Math.round(promedio)
-                    ? 'fill-yellow-400 text-yellow-400'
-                    : 'fill-gray-200 text-gray-200'
-                }
-              />
-            ))}
+          <div className="flex items-center gap-1.5">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Star
+                  key={i}
+                  size={14}
+                  className={
+                    i <= Math.round(promedio)
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'fill-gray-200 text-gray-200'
+                  }
+                />
+              ))}
+            </div>
+            {typeof total === 'number' && total > 0 && (
+              <span className="text-xs text-gray-400">({total})</span>
+            )}
           </div>
           <span className="text-xs text-gray-500 uppercase tracking-wide">{tipo}</span>
           <span className="text-xs text-gray-500">{fuente}</span>

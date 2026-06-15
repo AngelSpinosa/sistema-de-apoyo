@@ -5,6 +5,7 @@ import { useState } from 'react'
 type Props = {
   promedio?: number
   total?: number
+  miCalificacion?: number
   onCalificar?: (valor: number) => void
   readonly?: boolean
   size?: 'sm' | 'md' | 'lg'
@@ -13,14 +14,17 @@ type Props = {
 export default function CalificacionEstrellas({
   promedio = 0,
   total,
+  miCalificacion = 0,
   onCalificar,
   readonly = false,
   size = 'md',
 }: Props) {
   const [hover, setHover] = useState(0)
-  const [seleccionada, setSeleccionada] = useState(0)
 
-  const valorMostrado = hover || seleccionada || promedio
+  // Si el usuario ya votó, mostramos SU voto (entero) al interactuar/al reposo.
+  // Si no ha votado, mostramos el promedio (puede tener decimales) en modo readonly.
+  const valorBase = miCalificacion > 0 ? miCalificacion : promedio
+  const valorMostrado = hover || valorBase
 
   const sizeMap = {
     sm: 'w-4 h-4',
@@ -36,7 +40,6 @@ export default function CalificacionEstrellas({
 
   const handleClick = (valor: number) => {
     if (readonly) return
-    setSeleccionada(valor)
     onCalificar?.(valor)
   }
 
@@ -98,11 +101,16 @@ export default function CalificacionEstrellas({
         })}
       </div>
 
-      {typeof total === 'number' && (
-        <span className="text-sm text-gray-500">
-          ({total} {total === 1 ? 'calificación' : 'calificaciones'})
-        </span>
-      )}
+      <div className="flex flex-col">
+        {typeof total === 'number' && (
+          <span className="text-sm text-gray-500">
+            {promedio.toFixed(1)} ({total} {total === 1 ? 'calificación' : 'calificaciones'})
+          </span>
+        )}
+        {!readonly && miCalificacion > 0 && (
+          <span className="text-xs text-gray-400">Tu calificación: {miCalificacion}</span>
+        )}
+      </div>
     </div>
   )
 }

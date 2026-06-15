@@ -18,6 +18,7 @@ type Recurso = {
   tipo: string
   descripcion: string
   promedio: number
+  total: number
   url: string
   tema: string
 }
@@ -47,7 +48,6 @@ export default function DashboardPage() {
         .select(`
           id_recurso,
           titulo,
-          promedio_calificacion,
           recurso_bruto (
             url_fuente,
             formato,
@@ -63,16 +63,39 @@ export default function DashboardPage() {
         return
       }
 
-      const mapeados: Recurso[] = (data ?? []).map((r: any) => ({
-        id: r.id_recurso,
-        titulo: r.titulo,
-        fuente: r.recurso_bruto?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
-        tipo: r.recurso_bruto?.formato ?? 'pdf',
-        descripcion: r.recurso_bruto?.autor ?? '',
-        promedio: r.promedio_calificacion ?? 0,
-        url: r.recurso_bruto?.url_fuente ?? '',
-        tema: TEMAS[0],
-      }))
+      // La vista_calificacion_recurso no tiene FK declarada hacia 'recurso',
+      // así que PostgREST no puede embeberla automáticamente.
+      // La consultamos por separado y mapeamos por id_recurso.
+      const { data: calificaciones, error: errorCalif } = await supabase
+        .from('vista_calificacion_recurso')
+        .select('id_recurso, promedio, total_calificaciones')
+
+      if (errorCalif) {
+        console.error('Error cargando calificaciones:', errorCalif)
+      }
+
+      const mapaCalificaciones = new Map<string, { promedio: number; total: number }>()
+      ;(calificaciones ?? []).forEach((c: any) => {
+        mapaCalificaciones.set(c.id_recurso, {
+          promedio: c.promedio ?? 0,
+          total: c.total_calificaciones ?? 0,
+        })
+      })
+
+      const mapeados: Recurso[] = (data ?? []).map((r: any) => {
+        const calif = mapaCalificaciones.get(r.id_recurso)
+        return {
+          id: r.id_recurso,
+          titulo: r.titulo,
+          fuente: r.recurso_bruto?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
+          tipo: r.recurso_bruto?.formato ?? 'pdf',
+          descripcion: r.recurso_bruto?.autor ?? '',
+          promedio: calif?.promedio ?? 0,
+          total: calif?.total ?? 0,
+          url: r.recurso_bruto?.url_fuente ?? '',
+          tema: TEMAS[0],
+        }
+      })
 
       setRecursos(mapeados)
 
@@ -192,6 +215,7 @@ export default function DashboardPage() {
                   tipo={r.tipo}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
+                  total={r.total}
                   urlFuente={r.url}
                   formato={r.tipo}
                   onClick={() => handleVerRecurso(r.id, terminoBusqueda)}
@@ -221,6 +245,7 @@ export default function DashboardPage() {
                   fuente={r.fuente}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
+                  total={r.total}
                   urlFuente={r.url}         // <-- AÑADIDO
                   formato={r.tipo}          // <-- AÑADIDO
                   onClick={() => handleVerRecurso(r.id)}
@@ -244,6 +269,7 @@ export default function DashboardPage() {
                   fuente={r.fuente}
                   descripcion={r.descripcion}
                   promedio={r.promedio}
+                  total={r.total}
                   urlFuente={r.url}         // <-- AÑADIDO
                   formato={r.tipo}          // <-- AÑADIDO
                   onClick={() => handleVerRecurso(r.id)}
