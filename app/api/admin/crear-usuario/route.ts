@@ -8,7 +8,7 @@ export async function POST(req: Request) {
     { auth: { autoRefreshToken: false, persistSession: false } }
   )
 
-  const { nombre, apellidos, correo, rol, contrasena } = await req.json()
+  const { nombre, apellidos, correo, rol, contrasena, academia, carrera, semestre } = await req.json()
 
   // Paso 1: crear en Auth con signUp
   const { data, error } = await supabaseAdmin.auth.signUp({
@@ -25,16 +25,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'No se pudo crear el usuario' }, { status: 400 })
   }
 
-  // Paso 2: INSERT usando el cliente admin con service_role
-  // Usamos from() directamente sobre supabaseAdmin que tiene service_role
+  // Paso 2: INSERT usando el cliente admin con service_role.
+  // El RPC ahora crea también la fila en docente/estudiante
+  // con sus atributos extra (academia / carrera / semestre).
   const { error: errorInsert } = await supabaseAdmin
-  .rpc('insertar_usuario', {
-    p_id: data.user.id,
-    p_nombre: nombre,
-    p_apellidos: apellidos,
-    p_correo: correo,
-    p_rol: rol,
-  })
+    .rpc('insertar_usuario', {
+      p_id: data.user.id,
+      p_nombre: nombre,
+      p_apellidos: apellidos,
+      p_correo: correo,
+      p_rol: rol,
+      p_academia: rol === 'docente' ? (academia ?? null) : null,
+      p_carrera: rol === 'estudiante' ? (carrera ?? null) : null,
+      p_semestre: rol === 'estudiante' ? (semestre ?? null) : null,
+    })
 
   if (errorInsert) {
     console.error('Error insert:', errorInsert.message)

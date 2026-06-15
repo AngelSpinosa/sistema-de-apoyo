@@ -5,7 +5,7 @@ type Props = {
   endpoint: string
   activo: boolean
   onToggle: () => void
-  onClick: () => void
+  onClick?: () => void
 }
 
 export default function TarjetaRepositorio({
@@ -18,7 +18,11 @@ export default function TarjetaRepositorio({
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center gap-3 cursor-pointer hover:shadow-md transition group relative"
+      className={`bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center gap-3 transition group relative ${
+        onClick
+          ? 'cursor-pointer hover:shadow-md'
+          : 'cursor-default opacity-70'
+      }`}
     >
       {/* Toggle de estado */}
       <button

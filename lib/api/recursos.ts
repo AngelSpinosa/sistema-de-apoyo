@@ -31,3 +31,37 @@ export async function getRecursoById(id: string) {
   if (error) throw new Error(error.message)
   return data
 }
+
+export async function getRecursosPorRepositorio(idRepositorio: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('recurso')
+    .select(`
+      id_recurso,
+      titulo,
+      disponibilidad,
+      recurso_bruto (
+        autor,
+        formato
+      )
+    `)
+    .eq('id_repositorio', idRepositorio)
+    .order('titulo', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return data
+}
+
+export async function getRepositorioById(idRepositorio: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from('repositorio_externo')
+    .select('id_repositorio, nombre_fuente, estado_activo')
+    .eq('id_repositorio', idRepositorio)
+    .single()
+
+  if (error) throw new Error(error.message)
+  return data
+}

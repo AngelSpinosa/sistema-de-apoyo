@@ -11,6 +11,9 @@ type Usuario = {
   apellidos: string
   correo: string
   rol: 'docente' | 'estudiante' | 'administrador'
+  academia?: string
+  carrera?: string
+  semestre?: number
 }
 
 type FiltroRol = 'todos' | 'docente' | 'estudiante' | 'administrador'
@@ -35,13 +38,36 @@ export default function UsuariosAdminPage() {
 
     if (error) { console.error(error); setCargando(false); return }
 
-    setUsuarios((data ?? []).map((u: any) => ({
-      id: u.id_usuario,
-      nombre: u.nombre ?? '',
-      apellidos: u.apellidos ?? '',
-      correo: u.correo_institucional ?? '',
-      rol: u.rol,
-    })))
+    // Atributos específicos de docente y estudiante
+    const [{ data: docentes }, { data: estudiantes }] = await Promise.all([
+      supabase.from('docente').select('id_usuario, academias'),
+      supabase.from('estudiante').select('id_usuario, carrera, semestre'),
+    ])
+
+    const mapaDocentes = new Map((docentes ?? []).map((d: any) => [d.id_usuario, d]))
+    const mapaEstudiantes = new Map((estudiantes ?? []).map((e: any) => [e.id_usuario, e]))
+
+    setUsuarios((data ?? []).map((u: any) => {
+      const base: Usuario = {
+        id: u.id_usuario,
+        nombre: u.nombre ?? '',
+        apellidos: u.apellidos ?? '',
+        correo: u.correo_institucional ?? '',
+        rol: u.rol,
+      }
+
+      if (u.rol === 'docente') {
+        const d = mapaDocentes.get(u.id_usuario)
+        return { ...base, academia: d?.academias?.[0] ?? '' }
+      }
+
+      if (u.rol === 'estudiante') {
+        const e = mapaEstudiantes.get(u.id_usuario)
+        return { ...base, carrera: e?.carrera ?? '', semestre: e?.semestre ?? undefined }
+      }
+
+      return base
+    }))
     setCargando(false)
   }
 
@@ -74,6 +100,8 @@ export default function UsuariosAdminPage() {
 
   const handleEditar = async (datos: any) => {
     if (!usuarioEditar) return
+
+    // 1. Datos generales del usuario
     const updates: any = {
       nombre: datos.nombre,
       apellidos: datos.apellidos,
@@ -85,6 +113,27 @@ export default function UsuariosAdminPage() {
       .update(updates)
       .eq('id_usuario', usuarioEditar.id)
     if (error) throw new Error(error.message)
+
+    // 2. Atributos específicos según el rol
+    if (datos.rol === 'docente') {
+      const { error: errorDocente } = await supabase
+        .from('docente')
+        .update({ academias: datos.academia ? [datos.academia] : [] })
+        .eq('id_usuario', usuarioEditar.id)
+      if (errorDocente) throw new Error(errorDocente.message)
+    }
+
+    if (datos.rol === 'estudiante') {
+      const { error: errorEstudiante } = await supabase
+        .from('estudiante')
+        .update({
+          carrera: datos.carrera || null,
+          semestre: datos.semestre ?? null,
+        })
+        .eq('id_usuario', usuarioEditar.id)
+      if (errorEstudiante) throw new Error(errorEstudiante.message)
+    }
+
     await cargarUsuarios()
   }
 

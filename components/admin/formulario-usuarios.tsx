@@ -8,6 +8,9 @@ type DatosUsuario = {
   correo: string
   rol: 'docente' | 'estudiante' | 'administrador'
   contrasena?: string
+  academia?: string
+  carrera?: string
+  semestre?: number
 }
 
 type Props = {
@@ -22,6 +25,19 @@ const ROLES = [
   { value: 'estudiante', label: 'Estudiante' },
   { value: 'administrador', label: 'Administrador' },
 ]
+
+const ACADEMIAS = [
+  'Desarrollo de Software',
+  'Arquitectura y Sistemas',
+  'Sistemas y Tecnologías Web',
+]
+
+const CARRERAS = [
+  'Ingeniería de Software',
+  'Tecnologías Computacionales',
+]
+
+const SEMESTRES = Array.from({ length: 12 }, (_, i) => i + 1)
 
 export default function FormularioUsuarios({
   datosIniciales = {},
@@ -39,6 +55,11 @@ export default function FormularioUsuarios({
   const [guardado, setGuardado]   = useState(false)
   const [error, setError]         = useState<string | null>(null)
 
+  // Atributos específicos por rol
+  const [academia, setAcademia] = useState(datosIniciales.academia ?? '')
+  const [carrera, setCarrera]   = useState(datosIniciales.carrera ?? '')
+  const [semestre, setSemestre] = useState<number | ''>(datosIniciales.semestre ?? '')
+
   const handleGuardar = async () => {
     if (!nombre.trim() || !correo.trim()) return
     if (!modoEdicion && !contrasena.trim()) {
@@ -54,6 +75,9 @@ export default function FormularioUsuarios({
         correo: correo.trim(),
         rol,
         contrasena: contrasena.trim() || undefined,
+        academia: rol === 'docente' ? (academia || undefined) : undefined,
+        carrera: rol === 'estudiante' ? (carrera || undefined) : undefined,
+        semestre: rol === 'estudiante' ? (semestre === '' ? undefined : semestre) : undefined,
       })
       setGuardado(true)
       setTimeout(() => { setGuardado(false); onCerrar() }, 1000)
@@ -70,7 +94,7 @@ export default function FormularioUsuarios({
       onClick={onCerrar}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-7"
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col gap-5 p-7 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera */}
@@ -122,18 +146,86 @@ export default function FormularioUsuarios({
               <button
                 key={r.value}
                 type="button"
-                onClick={() => setRol(r.value as DatosUsuario['rol'])}
+                disabled={modoEdicion}
+                onClick={() => !modoEdicion && setRol(r.value as DatosUsuario['rol'])}
                 className={`flex-1 py-2 rounded-full text-xs font-semibold border transition ${
                   rol === r.value
                     ? 'bg-[#003087] text-white border-[#003087]'
                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                }`}
+                } ${modoEdicion ? 'opacity-60 cursor-not-allowed' : ''}`}
               >
                 {r.label}
               </button>
             ))}
           </div>
+          {modoEdicion && (
+            <p className="text-xs text-gray-400 px-1">
+              El rol no se puede modificar después de la creación.
+            </p>
+          )}
         </div>
+
+        {/* Atributos de Docente: Academia */}
+        {rol === 'docente' && (
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs text-gray-500 font-medium px-1">Academia</label>
+            <div className="flex flex-col gap-2">
+              {ACADEMIAS.map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAcademia(a)}
+                  className={`w-full py-2 rounded-full text-xs font-semibold border transition ${
+                    academia === a
+                      ? 'bg-[#003087] text-white border-[#003087]'
+                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                  }`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Atributos de Estudiante: Carrera y Semestre */}
+        {rol === 'estudiante' && (
+          <>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-500 font-medium px-1">Carrera</label>
+              <div className="flex flex-col gap-2">
+                {CARRERAS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCarrera(c)}
+                    className={`w-full py-2 rounded-full text-xs font-semibold border transition ${
+                      carrera === c
+                        ? 'bg-[#003087] text-white border-[#003087]'
+                        : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs text-gray-500 font-medium px-1">Semestre</label>
+              <select
+                value={semestre}
+                onChange={(e) => setSemestre(e.target.value === '' ? '' : Number(e.target.value))}
+                className="w-full rounded-full border border-gray-200 px-4 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[#003087] transition bg-white"
+              >
+                <option value="">Selecciona un semestre</option>
+                {SEMESTRES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </div>
+          </>
+        )}
 
         {/* Contraseña */}
         <div className="flex flex-col gap-1">
