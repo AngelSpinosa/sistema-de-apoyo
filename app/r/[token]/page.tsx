@@ -41,52 +41,46 @@ export default async function RecursoCompartidoPage({ params }: Props) {
 
   if (errorToken || !compartido) return notFound()
 
-  // 2. Cargar la nota pedagógica específica + su curacion + recurso
-  const { data: meta } = await supabase
-    .from('metadato_pedagogico')
-    .select(`
-      titulo,
-      resultado_educacional,
-      nivel_dificultad,
-      metodo_educacional,
-      tipo_recurso_educativo,
-      rol_audiencia,
-      tiempo_aprendizaje,
-      anotacion,
-      recurso_curado (
-        id_docente,
-        recurso (
-          titulo,
-          recurso_bruto (
-            url_fuente,
-            formato,
-            autor,
-            repositorio_externo (nombre_fuente)
-          )
-        )
-      )
-    `)
-    .eq('id_metadato', compartido.id_metadato)
-    .single()
+  // 2–5. Un solo query SQL raw que une todas las tablas.
+  //       Los queries encadenados fallaban porque RLS bloqueaba
+  //       columnas intermedias (id_curacion) para sesiones anónimas.
+  type RecursoCompartidoRow = {
+    titulo:                 string | null
+    resultado_educacional:  string | null
+    nivel_dificultad:       string | null
+    metodo_educacional:     string | null
+    tipo_recurso_educativo: string | null
+    rol_audiencia:          string | null
+    tiempo_aprendizaje:     string | null
+    anotacion:              string | null
+    titulo_recurso:         string | null
+    url_fuente:             string | null
+    formato:                string | null
+    autor:                  string | null
+    nombre_fuente:          string | null
+    nombre_docente:         string | null
+  }
 
-  if (!meta) return notFound()
-
-  const curacion    = (meta as any).recurso_curado
-  const recursoData = curacion?.recurso
-  const rb          = recursoData?.recurso_bruto
-  const url         = rb?.url_fuente ?? ''
-  const tipo        = detectarTipo(rb?.formato ?? '', url)
-
-  // 3. Nombre del docente
-  const { data: docenteData } = await supabase
-    .from('usuario')
-    .select('nombre, apellidos')
-    .eq('id_usuario', curacion?.id_docente)
+  const { data: raw, error: errorQuery } = await supabase
+    .rpc('get_recurso_compartido_por_token', { p_token: token })
     .maybeSingle()
 
-  const nombreDocente = docenteData
-    ? `${docenteData.nombre} ${docenteData.apellidos}`
-    : 'Docente'
+  if (errorQuery || !raw) return notFound()
+
+  const resultado = raw as RecursoCompartidoRow
+  const meta = resultado
+  const url  = resultado.url_fuente ?? ''
+  const tipo = detectarTipo(resultado.formato ?? '', url)
+  const nombreDocente = resultado.nombre_docente ?? 'Docente'
+
+  // Adaptar forma de recursoData para el JSX existente
+  const recursoData = { titulo: resultado.titulo_recurso }
+  const rb = {
+    url_fuente:          resultado.url_fuente,
+    formato:             resultado.formato,
+    autor:               resultado.autor,
+    repositorio_externo: { nombre_fuente: resultado.nombre_fuente },
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -96,7 +90,7 @@ export default async function RecursoCompartidoPage({ params }: Props) {
           <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
         </svg>
         <span>
-          Recurso compartido por <strong>{nombreDocente}</strong> · Nota: <strong>{(meta as any).titulo}</strong>
+          Recurso compartido por <strong>{nombreDocente}</strong> · Nota: <strong>{meta.titulo}</strong>
         </span>
       </div>
 
@@ -120,7 +114,7 @@ export default async function RecursoCompartidoPage({ params }: Props) {
             <div className="flex flex-col gap-4 pt-4 border-t border-gray-100">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-semibold text-[#003087] uppercase tracking-wide">
-                  {(meta as any).titulo}
+                  {meta.titulo}
                 </span>
                 <span className="text-[10px] text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded font-mono">
                   ISO/IEC 19788-5
@@ -128,65 +122,65 @@ export default async function RecursoCompartidoPage({ params }: Props) {
               </div>
 
               {/* Dificultad */}
-              {(meta as any).nivel_dificultad && (
+              {meta.nivel_dificultad && (
                 <div className="flex flex-col gap-1">
                   <p className="text-xs text-gray-400 uppercase tracking-wide">
                     Nivel de dificultad <span className="text-gray-300">DES0800</span>
                   </p>
                   <span className={`self-start text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    COLORES_DIFICULTAD[(meta as any).nivel_dificultad] ?? 'bg-gray-100 text-gray-600'
+                    COLORES_DIFICULTAD[meta.nivel_dificultad] ?? 'bg-gray-100 text-gray-600'
                   }`}>
-                    {ETIQUETAS_DIFICULTAD[(meta as any).nivel_dificultad] ?? (meta as any).nivel_dificultad}
+                    {ETIQUETAS_DIFICULTAD[meta.nivel_dificultad] ?? meta.nivel_dificultad}
                   </span>
                 </div>
               )}
 
               {/* Resultado educacional */}
-              {(meta as any).resultado_educacional && (
+              {meta.resultado_educacional && (
                 <div className="flex flex-col gap-1">
                   <p className="text-xs text-gray-400 uppercase tracking-wide">
                     Resultado educacional <span className="text-gray-300">DES0500</span>
                   </p>
-                  <p className="text-sm text-gray-700">{(meta as any).resultado_educacional}</p>
+                  <p className="text-sm text-gray-700">{meta.resultado_educacional}</p>
                 </div>
               )}
 
               {/* Anotación */}
-              {(meta as any).anotacion && (
+              {meta.anotacion && (
                 <div className="flex flex-col gap-1">
                   <p className="text-xs text-gray-400 uppercase tracking-wide">
                     Anotación del docente <span className="text-gray-300">DES1000</span>
                   </p>
                   <p className="text-sm text-gray-700 bg-yellow-50 border border-yellow-100 rounded-lg p-3">
-                    {(meta as any).anotacion}
+                    {meta.anotacion}
                   </p>
                 </div>
               )}
 
               {/* Metadatos secundarios */}
               <div className="grid grid-cols-2 gap-2 text-xs bg-gray-50 rounded-lg p-3">
-                {(meta as any).metodo_educacional && (
+                {meta.metodo_educacional && (
                   <div>
                     <p className="text-gray-400">Método <span className="text-gray-300">DES0100</span></p>
-                    <p className="text-gray-700 capitalize">{(meta as any).metodo_educacional.replace(/_/g, ' ')}</p>
+                    <p className="text-gray-700 capitalize">{meta.metodo_educacional.replace(/_/g, ' ')}</p>
                   </div>
                 )}
-                {(meta as any).tipo_recurso_educativo && (
+                {meta.tipo_recurso_educativo && (
                   <div>
                     <p className="text-gray-400">Tipo <span className="text-gray-300">DES0200</span></p>
-                    <p className="text-gray-700 capitalize">{(meta as any).tipo_recurso_educativo.replace(/_/g, ' ')}</p>
+                    <p className="text-gray-700 capitalize">{meta.tipo_recurso_educativo.replace(/_/g, ' ')}</p>
                   </div>
                 )}
-                {(meta as any).rol_audiencia && (
+                {meta.rol_audiencia && (
                   <div>
                     <p className="text-gray-400">Audiencia <span className="text-gray-300">DES0700</span></p>
-                    <p className="text-gray-700 capitalize">{(meta as any).rol_audiencia}</p>
+                    <p className="text-gray-700 capitalize">{meta.rol_audiencia}</p>
                   </div>
                 )}
-                {(meta as any).tiempo_aprendizaje && (
+                {meta.tiempo_aprendizaje && (
                   <div>
                     <p className="text-gray-400">Tiempo <span className="text-gray-300">DES0900</span></p>
-                    <p className="text-gray-700">{(meta as any).tiempo_aprendizaje} min</p>
+                    <p className="text-gray-700">{meta.tiempo_aprendizaje} min</p>
                   </div>
                 )}
               </div>

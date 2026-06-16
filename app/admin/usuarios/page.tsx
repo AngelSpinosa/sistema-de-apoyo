@@ -138,8 +138,18 @@ export default function UsuariosAdminPage() {
   }
 
   const handleEliminar = async (id: string) => {
-    const { error } = await supabase.from('usuario').delete().eq('id_usuario', id)
-    if (error) { console.error(error); return }
+    const res = await fetch('/api/admin/eliminar-usuario', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    })
+
+    if (!res.ok) {
+      const json = await res.json()
+      console.error('Error al eliminar usuario:', json.error)
+      return
+    }
+
     setUsuarios((prev) => prev.filter((u) => u.id !== id))
   }
 
