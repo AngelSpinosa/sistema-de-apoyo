@@ -9,8 +9,6 @@ import TarjetaRecurso from '@/components/recursos/tarjeta-recurso'
 import TarjetaRecursoBusqueda from '@/components/recursos/tarjeta-recurso-busqueda'
 import PanelFiltros from '@/components/busqueda/panel-filtros'
 
-const TEMAS = ['Tema 1', 'Tema 2', 'Tema 35', 'Tema 777']
-
 type Recurso = {
   id: string
   titulo: string
@@ -20,15 +18,17 @@ type Recurso = {
   promedio: number
   total: number
   url: string
-  tema: string
 }
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [temaActivo, setTemaActivo] = useState(TEMAS[0])
+  const [temas, setTemas] = useState<string[]>([])
+  const [temaActivo, setTemaActivo] = useState('')
   const [terminoBusqueda, setTerminoBusqueda] = useState('')
   const [filtrosVisible, setFiltrosVisible] = useState(false)
   const [recursos, setRecursos] = useState<Recurso[]>([])
+  const [recursosPorTemaActivo, setRecursosPorTemaActivo] = useState<Recurso[]>([])
+  const [mapaRecursosPorTema, setMapaRecursosPorTema] = useState<Map<string, Recurso[]>>(new Map())
   const [recursosSeguirViendo, setRecursosSeguirViendo] = useState<Recurso[]>([])
   const [cargando, setCargando] = useState(true)
   const [filtrosActivos, setFiltrosActivos] = useState({
@@ -42,8 +42,17 @@ export default function DashboardPage() {
   const supabase = createClient()
 
   useEffect(() => {
-    async function cargarRecursos() {
-      const { data, error } = await supabase
+    async function cargarDatos() {
+      // 1. Obtener usuario autenticado
+      const { data: userData } = await supabase.auth.getUser()
+      const userId = userData.user?.id
+      if (!userId) {
+        setCargando(false)
+        return
+      }
+
+      // 2. Cargar todos los recursos activos con sus calificaciones
+      const { data: recursosData, error } = await supabase
         .from('recurso')
         .select(`
           id_recurso,
@@ -63,16 +72,9 @@ export default function DashboardPage() {
         return
       }
 
-      // La vista_calificacion_recurso no tiene FK declarada hacia 'recurso',
-      // así que PostgREST no puede embeberla automáticamente.
-      // La consultamos por separado y mapeamos por id_recurso.
-      const { data: calificaciones, error: errorCalif } = await supabase
+      const { data: calificaciones } = await supabase
         .from('vista_calificacion_recurso')
         .select('id_recurso, promedio, total_calificaciones')
-
-      if (errorCalif) {
-        console.error('Error cargando calificaciones:', errorCalif)
-      }
 
       const mapaCalificaciones = new Map<string, { promedio: number; total: number }>()
       ;(calificaciones ?? []).forEach((c: any) => {
@@ -82,7 +84,7 @@ export default function DashboardPage() {
         })
       })
 
-      const mapeados: Recurso[] = (data ?? []).map((r: any) => {
+      const mapeados: Recurso[] = (recursosData ?? []).map((r: any) => {
         const calif = mapaCalificaciones.get(r.id_recurso)
         return {
           id: r.id_recurso,
@@ -93,33 +95,63 @@ export default function DashboardPage() {
           promedio: calif?.promedio ?? 0,
           total: calif?.total ?? 0,
           url: r.recurso_bruto?.url_fuente ?? '',
-          tema: TEMAS[0],
         }
       })
 
       setRecursos(mapeados)
 
-      // Cargar "Seguir Viendo" desde historial
-      const { data: userData } = await supabase.auth.getUser()
-      if (userData.user) {
-        const { data: vistas } = await supabase
-          .from('historial_vistas')
-          .select('id_recurso')
-          .eq('id_usuario', userData.user.id)
-          .order('fecha_vista', { ascending: false })
-          .limit(3)
+      // 3. Cargar temas del usuario desde tema_usuario
+      const { data: temasData } = await supabase
+        .from('tema_usuario')
+        .select('nombre_tema, orden')
+        .eq('id_usuario', userId)
+        .order('orden', { ascending: true })
 
-        if (vistas && vistas.length > 0) {
-          const vistosIds = vistas.map(v => v.id_recurso)
-          const vistosRecursos = vistosIds.map(id => mapeados.find(r => r.id === id)).filter(Boolean) as Recurso[]
-          // Si el historial devuelve menos de 3, rellenamos con otros recursos
-          const faltantes = 3 - vistosRecursos.length
-          const relleno = faltantes > 0 ? mapeados.filter(m => !vistosIds.includes(m.id)).slice(0, faltantes) : []
-          
-          setRecursosSeguirViendo([...vistosRecursos, ...relleno])
-        } else {
-          setRecursosSeguirViendo(mapeados.slice(0, 3))
+      const temasOrdenados = (temasData ?? []).map((t: any) => t.nombre_tema)
+      setTemas(temasOrdenados)
+
+      const primerTema = temasOrdenados[0] ?? ''
+      setTemaActivo(primerTema)
+
+      // 4. Cargar recursos por tema del usuario desde recurso_por_tema_usuario
+      const { data: recursosTemaData } = await supabase
+        .from('recurso_por_tema_usuario')
+        .select('nombre_tema, id_recurso, orden')
+        .eq('id_usuario', userId)
+        .order('orden', { ascending: true })
+
+      // Construir mapa tema → lista de Recurso
+      const mapaRecursos = new Map<string, Recurso[]>()
+      ;(recursosTemaData ?? []).forEach((rt: any) => {
+        const recurso = mapeados.find(r => r.id === rt.id_recurso)
+        if (!recurso) return
+        if (!mapaRecursos.has(rt.nombre_tema)) {
+          mapaRecursos.set(rt.nombre_tema, [])
         }
+        mapaRecursos.get(rt.nombre_tema)!.push(recurso)
+      })
+
+      setMapaRecursosPorTema(mapaRecursos)
+      setRecursosPorTemaActivo(mapaRecursos.get(primerTema) ?? [])
+
+      // 5. Cargar "Seguir viendo" desde historial_vistas
+      const { data: vistas } = await supabase
+        .from('historial_vistas')
+        .select('id_recurso')
+        .eq('id_usuario', userId)
+        .order('fecha_vista', { ascending: false })
+        .limit(3)
+
+      if (vistas && vistas.length > 0) {
+        const vistosIds = vistas.map((v: any) => v.id_recurso)
+        const vistosRecursos = vistosIds
+          .map((id: string) => mapeados.find(r => r.id === id))
+          .filter(Boolean) as Recurso[]
+        const faltantes = 3 - vistosRecursos.length
+        const relleno = faltantes > 0
+          ? mapeados.filter(m => !vistosIds.includes(m.id)).slice(0, faltantes)
+          : []
+        setRecursosSeguirViendo([...vistosRecursos, ...relleno])
       } else {
         setRecursosSeguirViendo(mapeados.slice(0, 3))
       }
@@ -127,8 +159,14 @@ export default function DashboardPage() {
       setCargando(false)
     }
 
-    cargarRecursos()
+    cargarDatos()
   }, [])
+
+  // Actualizar recursos mostrados cuando cambia el tema activo
+  const handleSeleccionarTema = (tema: string) => {
+    setTemaActivo(tema)
+    setRecursosPorTemaActivo(mapaRecursosPorTema.get(tema) ?? [])
+  }
 
   // Navega al detalle del recurso y guarda la búsqueda si aplica
   const handleVerRecurso = async (id: string, terminoGuardar?: string) => {
@@ -161,13 +199,6 @@ export default function DashboardPage() {
       resultados = resultados.filter((r) => filtrosActivos.fuente.includes(r.fuente))
     return resultados
   }, [terminoBusqueda, filtrosActivos, recursos, estasBuscando])
-
-  const recursosPorTema = useMemo(
-    () => recursos.filter((r) => r.tema === temaActivo),
-    [temaActivo, recursos]
-  )
-
-  // ELIMINAR ESTA LÍNEA ANTIGUA: const recursosSeguirViendo = recursos.slice(0, 3)
 
   if (cargando) {
     return (
@@ -203,7 +234,11 @@ export default function DashboardPage() {
 
       {estasBuscando ? (
         <div className="mt-6">
-          <ChipsTemas temas={TEMAS} temaActivo={temaActivo} onSeleccionar={setTemaActivo} />
+          <ChipsTemas
+            temas={temas}
+            temaActivo={temaActivo}
+            onSeleccionar={handleSeleccionarTema}
+          />
           <div className="mt-6 flex flex-col gap-2">
             {resultadosBusqueda.length > 0 ? (
               resultadosBusqueda.map((r) => (
@@ -231,7 +266,11 @@ export default function DashboardPage() {
       ) : (
         <>
           <div className="mt-3 flex justify-center">
-            <ChipsTemas temas={TEMAS} temaActivo={temaActivo} onSeleccionar={setTemaActivo} />
+            <ChipsTemas
+              temas={temas}
+              temaActivo={temaActivo}
+              onSeleccionar={handleSeleccionarTema}
+            />
           </div>
 
           <section className="mt-10">
@@ -246,8 +285,8 @@ export default function DashboardPage() {
                   descripcion={r.descripcion}
                   promedio={r.promedio}
                   total={r.total}
-                  urlFuente={r.url}         // <-- AÑADIDO
-                  formato={r.tipo}          // <-- AÑADIDO
+                  urlFuente={r.url}
+                  formato={r.tipo}
                   onClick={() => handleVerRecurso(r.id)}
                 />
               ))}
@@ -261,20 +300,26 @@ export default function DashboardPage() {
               Más sobre {temaActivo}
             </h2>
             <div className="grid grid-cols-3 gap-6">
-              {recursosPorTema.map((r) => (
-                <TarjetaRecurso
-                  key={r.id}
-                  idRecurso={r.id}
-                  titulo={r.titulo}
-                  fuente={r.fuente}
-                  descripcion={r.descripcion}
-                  promedio={r.promedio}
-                  total={r.total}
-                  urlFuente={r.url}         // <-- AÑADIDO
-                  formato={r.tipo}          // <-- AÑADIDO
-                  onClick={() => handleVerRecurso(r.id)}
-                />
-              ))}
+              {recursosPorTemaActivo.length > 0 ? (
+                recursosPorTemaActivo.map((r) => (
+                  <TarjetaRecurso
+                    key={r.id}
+                    idRecurso={r.id}
+                    titulo={r.titulo}
+                    fuente={r.fuente}
+                    descripcion={r.descripcion}
+                    promedio={r.promedio}
+                    total={r.total}
+                    urlFuente={r.url}
+                    formato={r.tipo}
+                    onClick={() => handleVerRecurso(r.id)}
+                  />
+                ))
+              ) : (
+                <p className="text-gray-400 text-sm col-span-3 text-center mt-4">
+                  No hay recursos asignados para este tema.
+                </p>
+              )}
             </div>
           </section>
         </>
