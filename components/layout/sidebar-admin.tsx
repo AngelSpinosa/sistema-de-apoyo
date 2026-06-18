@@ -32,11 +32,6 @@ export default function SidebarAdmin() {
       etiqueta: 'Usuarios',
       ruta: '/admin/usuarios',
     },
-    {
-      icono: <Settings size={22} />,
-      etiqueta: 'Configuración',
-      ruta: '/admin/configuracion',
-    },
   ]
 
   return (

@@ -72,12 +72,6 @@ export default function Sidebar() {
       matchRutas: ['/docente/colecciones', '/estudiante/biblioteca'],
     },
     {
-      icono: <Settings size={22} />,
-      etiqueta: 'Configuración',
-      ruta: '/configuracion',
-      matchRutas: ['/configuracion'],
-    },
-    {
       icono: <History size={22} />,
       etiqueta: 'Historial',
       ruta: '/dashboard/historial',
