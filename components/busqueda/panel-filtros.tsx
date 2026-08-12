@@ -8,6 +8,7 @@ type Filtros = {
   fechaCarga: string
   fuente: string[]
   selloAcademia: boolean
+  calificacionMinima: number
 }
 
 type Props = {
@@ -20,6 +21,31 @@ const FORMATOS = ['Video', 'PDF', 'Infografía', 'Paper']
 const DIFICULTADES = ['Básico', 'Intermedio', 'Avanzado']
 const FECHAS = ['Última semana', 'Último mes', 'Último año', 'Cualquier fecha']
 const FUENTES = ['YouTube', 'MERLOT', 'Biblioteca CIIES', 'Cloudinary']
+const CALIFICACIONES = [
+  { estrellas: 5, sufijo: '', valor: 5 },
+  { estrellas: 4, sufijo: 'o más', valor: 4 },
+  { estrellas: 3, sufijo: 'o más', valor: 3 },
+  { estrellas: 2, sufijo: 'o más', valor: 2 },
+  { estrellas: 0, sufijo: 'Cualquier calificación', valor: 0 },
+]
+
+function MiniEstrellas({ cantidad }: { cantidad: number }) {
+  return (
+    <div className="flex gap-0.5">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <svg key={i} viewBox="0 0 24 24" className="w-3.5 h-3.5">
+          <path
+            d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+            fill={i <= cantidad ? '#F59E0B' : 'none'}
+            stroke={i <= cantidad ? '#F59E0B' : '#D1D5DB'}
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+      ))}
+    </div>
+  )
+}
 
 export default function PanelFiltros({ visible, onCerrar, onAplicar }: Props) {
   const [filtros, setFiltros] = useState<Filtros>({
@@ -28,6 +54,7 @@ export default function PanelFiltros({ visible, onCerrar, onAplicar }: Props) {
     fechaCarga: '',
     fuente: [],
     selloAcademia: false,
+    calificacionMinima: 0,
   })
 
   if (!visible) return null
@@ -48,6 +75,7 @@ export default function PanelFiltros({ visible, onCerrar, onAplicar }: Props) {
       fechaCarga: '',
       fuente: [],
       selloAcademia: false,
+      calificacionMinima: 0,
     })
   }
 
@@ -153,6 +181,39 @@ export default function PanelFiltros({ visible, onCerrar, onAplicar }: Props) {
               >
                 {f}
               </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Calificación */}
+        <div>
+          <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
+            Calificación
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {CALIFICACIONES.map((c) => (
+              <label key={c.valor} className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="calificacion"
+                  value={c.valor}
+                  checked={filtros.calificacionMinima === c.valor}
+                  onChange={() =>
+                    setFiltros((prev) => ({ ...prev, calificacionMinima: c.valor }))
+                  }
+                  className="accent-[#003087]"
+                />
+                {c.estrellas > 0 ? (
+                  <div className="flex items-center gap-1.5">
+                    <MiniEstrellas cantidad={c.estrellas} />
+                    {c.sufijo && (
+                      <span className="text-xs text-gray-600">{c.sufijo}</span>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-xs text-gray-600">{c.sufijo}</span>
+                )}
+              </label>
             ))}
           </div>
         </div>

@@ -37,6 +37,7 @@ export default function DashboardPage() {
     fechaCarga: '',
     fuente: [] as string[],
     selloAcademia: false,
+    calificacionMinima: 0,
   })
 
   const supabase = createClient()
@@ -182,21 +183,39 @@ export default function DashboardPage() {
     router.push(`/dashboard/recurso/${id}`)
   }
 
-  const estasBuscando = terminoBusqueda.trim().length > 0
+  const hayFiltrosActivos =
+    filtrosActivos.formato.length > 0 ||
+    filtrosActivos.dificultad.length > 0 ||
+    filtrosActivos.fechaCarga !== '' ||
+    filtrosActivos.fuente.length > 0 ||
+    filtrosActivos.selloAcademia ||
+    filtrosActivos.calificacionMinima > 0
+
+  const estasBuscando = terminoBusqueda.trim().length > 0 || hayFiltrosActivos
 
   const resultadosBusqueda = useMemo(() => {
     if (!estasBuscando) return []
-    let resultados = recursos.filter(
-      (r) =>
-        r.titulo.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
-        r.descripcion.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
-        r.tipo.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
-        r.fuente.toLowerCase().includes(terminoBusqueda.toLowerCase())
-    )
+
+    let resultados =
+      terminoBusqueda.trim().length > 0
+        ? recursos.filter(
+            (r) =>
+              r.titulo.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+              r.descripcion.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+              r.tipo.toLowerCase().includes(terminoBusqueda.toLowerCase()) ||
+              r.fuente.toLowerCase().includes(terminoBusqueda.toLowerCase())
+          )
+        : recursos
+
     if (filtrosActivos.formato.length > 0)
       resultados = resultados.filter((r) => filtrosActivos.formato.includes(r.tipo))
     if (filtrosActivos.fuente.length > 0)
       resultados = resultados.filter((r) => filtrosActivos.fuente.includes(r.fuente))
+    if (filtrosActivos.calificacionMinima > 0) {
+      resultados = resultados
+        .filter((r) => r.promedio >= filtrosActivos.calificacionMinima)
+        .sort((a, b) => b.promedio - a.promedio)
+    }
     return resultados
   }, [terminoBusqueda, filtrosActivos, recursos, estasBuscando])
 
@@ -258,7 +277,9 @@ export default function DashboardPage() {
               ))
             ) : (
               <p className="text-gray-400 text-sm text-center mt-10">
-                No se encontraron recursos para &quot;{terminoBusqueda}&quot;
+                {terminoBusqueda.trim().length > 0
+                  ? `No se encontraron recursos para "${terminoBusqueda}"`
+                  : 'No se encontraron recursos con esos filtros'}
               </p>
             )}
           </div>
