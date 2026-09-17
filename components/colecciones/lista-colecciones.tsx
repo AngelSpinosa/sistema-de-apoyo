@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo, useEffect } from 'react'
+import { SlidersHorizontal } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import TarjetaColeccion from '@/components/colecciones/tarjeta-coleccion'
 import FormularioColeccion from '@/components/colecciones/formulario-coleccion'
@@ -307,10 +308,8 @@ export default function ListaColecciones() {
                     : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                 }`}
               >
-                <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current">
-                  <path fillRule="evenodd" d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L13 10.414V15a1 1 0 01-.553.894l-4 2A1 1 0 017 17v-6.586L3.293 6.707A1 1 0 013 6V3z" clipRule="evenodd" />
-                </svg>
                 Filtros
+                <SlidersHorizontal size={16} />
                 {filtroPrivacidad !== 'todas' && (
                   <span className="bg-white text-[#003087] rounded-full w-4 h-4 text-xs flex items-center justify-center font-bold">1</span>
                 )}

@@ -97,7 +97,7 @@ export default function Sidebar() {
             aria-label="Abrir menú"
           >
             <Menu size={22} />
-            {!abierto && <span className="text-[9px] font-medium text-white/70">Opciones</span>}
+            <span className="text-[9px] font-medium text-white/70">Opciones</span>
           </button>
 
         {/* Navegación */}

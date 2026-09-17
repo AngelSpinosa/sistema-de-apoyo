@@ -80,7 +80,7 @@ export default function LoginPage() {
               placeholder="Ingresa tu nombre de usuario/Correo I."
               value={email}
               onChange={e => setEmail(e.target.value)}
-              className="rounded-full px-4 py-2 text-sm outline-none text-gray-800 placeholder-gray-400 border border-gray-300 transition focus:border-uv-verde focus:ring-2 focus:ring-uv-verde"
+              className="rounded-full px-4 py-2 text-sm outline-none text-white placeholder-gray-400 border border-gray-300 transition focus:border-uv-verde focus:ring-2 focus:ring-uv-verde"
             />
           </div>
 
@@ -93,7 +93,7 @@ export default function LoginPage() {
               value={password}
               onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleLogin()}
-              className="rounded-full px-4 py-2 text-sm outline-none text-gray-800 placeholder-gray-400 border border-gray-300 transition focus:border-uv-verde focus:ring-2 focus:ring-uv-verde"
+              className="rounded-full px-4 py-2 text-sm outline-none text-white placeholder-gray-400 border border-gray-300 transition focus:border-uv-verde focus:ring-2 focus:ring-uv-verde"
             />
           </div>
 

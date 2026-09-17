@@ -77,7 +77,7 @@ export default function ModalCompartirRecurso({ idRecurso, titulo, onCerrar }: P
         <button
           type="button"
           onClick={onCerrar}
-          className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition"
+          className="w-full py-2.5 rounded-xl bg-[#003087] text-sm font-semibold text-white hover:bg-[#002070] transition"
         >
           Listo
         </button>

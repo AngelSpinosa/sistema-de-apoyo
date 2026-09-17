@@ -6,7 +6,8 @@ import CalificacionEstrellas from '@/components/recursos/calificacion-estrellas'
 import BadgeSello from '@/components/recursos/badge-sello'
 import FormularioCuracion, { type DatosCuracion } from '@/components/curacion/formulario-curacion'
 import PanelNotasPedagogicas, { type NotaPedagogica } from '@/components/recursos/panel-notas-pedagogicas'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Share2 } from 'lucide-react'
+import ModalCompartirRecurso from '@/components/recursos/modal-compartir-recurso'
 import { generarMiniaturaCloudinary } from '@/lib/cloudinary/utils'
 import { useCalificacion } from '@/hooks/use-calificacion'
 
@@ -88,13 +89,14 @@ function ModalCompartir({ url, onCerrar }: { url: string; onCerrar: () => void }
 
 // ─── Acciones docente ─────────────────────────────────────────────────────────
 function AccionesDocente({
-  recurso, esMiembroAcademia, nombreDocente, notas,
+  recurso, esMiembroAcademia, nombreDocente, notas, layout = 'columna',
   onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
 }: {
   recurso:           RecursoDetalle
   esMiembroAcademia: boolean
   nombreDocente?:    string
   notas:             NotaPedagogica[]
+  layout?:           'columna' | 'fila'
   onOtorgarSello:    () => Promise<void>
   onAgregarNota:     () => void
   onGuardarEdicion:  (datos: DatosCuracion, idMetadato: string) => Promise<void>
@@ -102,13 +104,26 @@ function AccionesDocente({
   onEliminarNota:    (idMetadato: string) => Promise<void>
 }) {
   return (
-    <div className="flex flex-col gap-3 pt-2 border-t border-gray-100">
-      <BadgeSello
-        estadoInicial={recurso.tieneSello ? 'con_sello' : 'sin_sello'}
-        onOtorgar={onOtorgarSello}
-        esMiembroAcademia={esMiembroAcademia}
-        nombreDocente={nombreDocente}
-      />
+    <div className={`flex flex-col gap-3 ${layout === 'columna' ? 'pt-2 border-t border-gray-100' : ''}`}>
+      <div className={layout === 'fila' ? 'flex flex-row flex-wrap items-center gap-2' : 'flex flex-col gap-3'}>
+        <BadgeSello
+          estadoInicial={recurso.tieneSello ? 'con_sello' : 'sin_sello'}
+          onOtorgar={onOtorgarSello}
+          esMiembroAcademia={esMiembroAcademia}
+          nombreDocente={nombreDocente}
+        />
+
+        <button
+          type="button"
+          onClick={onAgregarNota}
+          className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 bg-white text-[#003087] border-[#003087] hover:bg-[#003087] hover:text-white"
+        >
+          <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current flex-shrink-0">
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+          </svg>
+          Añadir contexto pedagógico
+        </button>
+      </div>
 
       {notas.length > 0 && (
         <PanelNotasPedagogicas
@@ -119,18 +134,21 @@ function AccionesDocente({
           onEliminar={onEliminarNota}
         />
       )}
-
-      <button
-        type="button"
-        onClick={onAgregarNota}
-        className="inline-flex items-center gap-2 px-4 py-2 rounded-full border text-sm font-medium transition-all duration-200 bg-white text-[#003087] border-[#003087] hover:bg-[#003087] hover:text-white"
-      >
-        <svg viewBox="0 0 20 20" className="w-4 h-4 fill-current flex-shrink-0">
-          <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-        </svg>
-        Añadir contexto pedagógico
-      </button>
     </div>
+  )
+}
+
+// ─── Botón compartir (visible para todos los roles) ────────────────────────────
+function BotonCompartir({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-200 text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition"
+    >
+      Compartir
+      <Share2 size={14} />
+    </button>
   )
 }
 
@@ -138,7 +156,7 @@ function AccionesDocente({
 function VistaPDF({
   recurso, rol, esMiembroAcademia, nombreDocente, notas,
   promedio, total, miCalificacion,
-  onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
+  onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota, onAbrirCompartir,
 }: {
   recurso: RecursoDetalle; rol: RolUsuario; esMiembroAcademia: boolean; nombreDocente?: string
   notas: NotaPedagogica[]
@@ -148,6 +166,7 @@ function VistaPDF({
   onGuardarEdicion: (datos: DatosCuracion, idMetadato: string) => Promise<void>
   onCompartirNota: (idMetadato: string) => Promise<void>
   onEliminarNota: (idMetadato: string) => Promise<void>
+  onAbrirCompartir: () => void
 }) {
   
   // Usamos nuestra ruta API como proxy para limpiar los encabezados de Cloudinary
@@ -170,6 +189,8 @@ function VistaPDF({
             onCalificar={onCalificar} readonly={false} size="md"
           />
         </div>
+
+        <BotonCompartir onClick={onAbrirCompartir} />
 
         {rol === 'docente' && (
           <AccionesDocente
@@ -241,7 +262,7 @@ function VistaPDF({
 function VistaVideo({
   recurso, rol, esMiembroAcademia, nombreDocente, notas,
   promedio, total, miCalificacion,
-  onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota,
+  onCalificar, onOtorgarSello, onAgregarNota, onGuardarEdicion, onCompartirNota, onEliminarNota, onAbrirCompartir,
 }: {
   recurso: RecursoDetalle; rol: RolUsuario; esMiembroAcademia: boolean; nombreDocente?: string
   notas: NotaPedagogica[]
@@ -251,6 +272,7 @@ function VistaVideo({
   onGuardarEdicion: (datos: DatosCuracion, idMetadato: string) => Promise<void>
   onCompartirNota: (idMetadato: string) => Promise<void>
   onEliminarNota: (idMetadato: string) => Promise<void>
+  onAbrirCompartir: () => void
 }) {
   // Generamos el thumbnail para el poster del video usando la utilidad
   const posterUrl = generarMiniaturaCloudinary(recurso.url, 'video');
@@ -274,7 +296,7 @@ function VistaVideo({
         )}
       </div>
 
-      <div className="p-6 md:p-10 max-w-4xl mx-auto w-full flex flex-col md:flex-row md:items-start md:justify-between gap-6">
+      <div className="p-6 md:p-10 max-w-6xl mx-auto w-full flex flex-col md:flex-row md:items-start md:justify-between gap-6">
         <div className="flex flex-col gap-1.5">
           <h1 className="text-2xl font-bold text-gray-900 leading-tight">{recurso.titulo}</h1>
           <p className="text-sm text-gray-500">{recurso.tipo}</p>
@@ -288,15 +310,27 @@ function VistaVideo({
           </div>
         </div>
 
-        {rol === 'docente' && (
-          <div className="min-w-[220px]">
-            <AccionesDocente
-              recurso={recurso} esMiembroAcademia={esMiembroAcademia} nombreDocente={nombreDocente}
-              notas={notas} onOtorgarSello={onOtorgarSello} onAgregarNota={onAgregarNota}
-              onGuardarEdicion={onGuardarEdicion} onCompartirNota={onCompartirNota} onEliminarNota={onEliminarNota}
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-row flex-wrap items-center gap-2">
+            <BotonCompartir onClick={onAbrirCompartir} />
+            {rol === 'docente' && (
+              <AccionesDocente
+                recurso={recurso} esMiembroAcademia={esMiembroAcademia} nombreDocente={nombreDocente}
+                notas={[]} layout="fila" onOtorgarSello={onOtorgarSello} onAgregarNota={onAgregarNota}
+                onGuardarEdicion={onGuardarEdicion} onCompartirNota={onCompartirNota} onEliminarNota={onEliminarNota}
+              />
+            )}
           </div>
-        )}
+          {rol === 'docente' && notas.length > 0 && (
+            <PanelNotasPedagogicas
+              idRecurso={recurso.id}
+              notas={notas}
+              onGuardar={(datos: DatosCuracion, idMetadato?: string) => onGuardarEdicion(datos, idMetadato!)}
+              onCompartir={onCompartirNota}
+              onEliminar={onEliminarNota}
+            />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -309,6 +343,7 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
   const [cargando,          setCargando]          = useState(true)
   const [formularioAbierto, setFormularioAbierto] = useState(false)
   const [urlCompartida,     setUrlCompartida]     = useState<string | null>(null)
+  const [compartirAbierto,  setCompartirAbierto]  = useState(false)
   const supabase = createClient()
 
   const {
@@ -491,6 +526,7 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
     onGuardarEdicion: handleGuardarEdicion,
     onCompartirNota: handleCompartirNota,
     onEliminarNota: handleEliminarNota,
+    onAbrirCompartir: () => setCompartirAbierto(true),
   }
 
   return (
@@ -500,6 +536,13 @@ export default function DetalleRecursoPage({ idRecurso, rol, esMiembroAcademia =
       )}
       {urlCompartida && (
         <ModalCompartir url={urlCompartida} onCerrar={() => setUrlCompartida(null)} />
+      )}
+      {compartirAbierto && (
+        <ModalCompartirRecurso
+          idRecurso={recurso.id}
+          titulo={recurso.titulo}
+          onCerrar={() => setCompartirAbierto(false)}
+        />
       )}
       {recurso.tipo === 'video' ? <VistaVideo {...vistaProps} /> : <VistaPDF {...vistaProps} />}
     </>
