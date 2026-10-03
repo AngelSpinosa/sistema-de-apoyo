@@ -5,6 +5,7 @@ import { useState } from 'react'
 import OpcionesRecurso from "../busqueda/opciones-recurso"
 import { generarMiniaturaCloudinary } from '@/lib/cloudinary/utils'
 import ModalCompartirRecurso from './modal-compartir-recurso' // ← IMPORTAMOS NUEVO MODAL
+import BadgeFormato from './badge-formato'
 
 type Props = {
   idRecurso: string
@@ -48,6 +49,7 @@ export default function TarjetaRecursoBusqueda({
         onClick={onClick}
       >
         <div className="w-44 h-28 shrink-0 bg-gray-200 rounded-lg overflow-hidden relative">
+          <BadgeFormato formato={formato ?? tipo} url={urlFuente} />
           {urlImagen ? (
             <img
               src={urlImagen}
@@ -81,7 +83,6 @@ export default function TarjetaRecursoBusqueda({
               <span className="text-xs text-gray-400">({total})</span>
             )}
           </div>
-          <span className="text-xs text-gray-500 uppercase tracking-wide">{tipo}</span>
           <span className="text-xs text-gray-500">{fuente}</span>
           <p className="text-xs text-gray-400 truncate">{descripcion}</p>
         </div>

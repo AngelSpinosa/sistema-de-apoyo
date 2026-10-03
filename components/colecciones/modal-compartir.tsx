@@ -1,6 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
+import { obtenerOCrearTokenColeccion } from '@/lib/api/colecciones'
 
 type Props = {
   coleccion: {
@@ -12,10 +14,34 @@ type Props = {
 }
 
 export default function ModalCompartir({ coleccion, onCerrar }: Props) {
-  const url = `${window.location.origin}/colecciones/${coleccion.id}`
+  const supabase = createClient()
+  const [url, setUrl] = useState('')
+  const [cargando, setCargando] = useState(true)
+  const [error, setError] = useState('')
   const [copiado, setCopiado] = useState(false)
 
+  useEffect(() => {
+    obtenerOcrearToken()
+  }, [coleccion.id])
+
+  async function obtenerOcrearToken() {
+    setCargando(true)
+    setError('')
+
+    const { token, error: errorToken } = await obtenerOCrearTokenColeccion(supabase, coleccion.id)
+
+    if (errorToken || !token) {
+      setError('No se pudo generar el enlace. Intenta de nuevo.')
+      setCargando(false)
+      return
+    }
+
+    setUrl(`${window.location.origin}/c/${token}`)
+    setCargando(false)
+  }
+
   const handleCopiar = async () => {
+    if (!url) return
     try {
       await navigator.clipboard.writeText(url)
       setCopiado(true)
@@ -69,38 +95,55 @@ export default function ModalCompartir({ coleccion, onCerrar }: Props) {
         </p>
 
         {/* URL + botón copiar */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
-          <svg viewBox="0 0 20 20" className="w-4 h-4 fill-gray-400 shrink-0">
-            <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
-          </svg>
-          <p className="text-xs text-gray-500 truncate flex-1 font-mono">{url}</p>
-          <button
-            type="button"
-            onClick={handleCopiar}
-            className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
-              copiado
-                ? 'bg-emerald-500 text-white'
-                : 'bg-[#003087] text-white hover:bg-[#002070]'
-            }`}
-          >
-            {copiado ? (
-              <>
-                <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-current">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                Copiado
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-current">
-                  <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
-                  <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
-                </svg>
-                Copiar
-              </>
-            )}
-          </button>
-        </div>
+        {cargando ? (
+          <div className="flex items-center justify-center py-3">
+            <p className="text-xs text-gray-400">Generando enlace...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-red-500">{error}</p>
+            <button
+              type="button"
+              onClick={obtenerOcrearToken}
+              className="text-xs font-semibold text-[#003087] hover:underline self-start"
+            >
+              Reintentar
+            </button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
+            <svg viewBox="0 0 20 20" className="w-4 h-4 fill-gray-400 shrink-0">
+              <path fillRule="evenodd" d="M12.586 4.586a2 2 0 112.828 2.828l-3 3a2 2 0 01-2.828 0 1 1 0 00-1.414 1.414 4 4 0 005.656 0l3-3a4 4 0 00-5.656-5.656l-1.5 1.5a1 1 0 101.414 1.414l1.5-1.5zm-5 5a2 2 0 012.828 0 1 1 0 101.414-1.414 4 4 0 00-5.656 0l-3 3a4 4 0 105.656 5.656l1.5-1.5a1 1 0 10-1.414-1.414l-1.5 1.5a2 2 0 11-2.828-2.828l3-3z" clipRule="evenodd" />
+            </svg>
+            <p className="text-xs text-gray-500 truncate flex-1 font-mono">{url}</p>
+            <button
+              type="button"
+              onClick={handleCopiar}
+              className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                copiado
+                  ? 'bg-emerald-500 text-white'
+                  : 'bg-[#003087] text-white hover:bg-[#002070]'
+              }`}
+            >
+              {copiado ? (
+                <>
+                  <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-current">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Copiado
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 20 20" className="w-3.5 h-3.5 fill-current">
+                    <path d="M8 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z" />
+                    <path d="M6 3a2 2 0 00-2 2v11a2 2 0 002 2h8a2 2 0 002-2V5a2 2 0 00-2-2 3 3 0 01-3 3H9a3 3 0 01-3-3z" />
+                  </svg>
+                  Copiar
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Botón cerrar */}
         <button

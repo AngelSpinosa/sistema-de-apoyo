@@ -8,15 +8,13 @@ import FormularioColeccion from '@/components/colecciones/formulario-coleccion'
 import Sidebar from '@/components/layout/sidebar'
 import ModalCompartir from '@/components/colecciones/modal-compartir'
 import { usePathname, useRouter } from 'next/navigation'
-
-type Coleccion = {
-  id: string
-  nombre: string
-  privacidad: 'privada' | 'publica'
-  descripcion?: string
-  fotografia?: string
-  totalRecursos?: number
-}
+import {
+  listarMisColecciones,
+  crearColeccion,
+  editarColeccion,
+  eliminarColeccion,
+  type Coleccion,
+} from '@/lib/api/colecciones'
 
 type FiltroPrivacidad = 'todas' | 'privada' | 'publica'
 
@@ -36,39 +34,15 @@ export default function ListaColecciones() {
   const router = useRouter()
   const pathname = usePathname()
 
-
   useEffect(() => {
     cargarColecciones()
   }, [])
 
   async function cargarColecciones() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    const { data, error } = await supabase
-    .from('coleccion')
-    .select(`
-      id_coleccion,
-      nombre,
-      privacidad,
-      descripcion,
-      fecha_creacion,
-      url_fotografia,
-      coleccion_recurso (id_recurso)
-    `)
-    .eq('id_usuario', user.id)
-    .order('fecha_creacion', { ascending: false })
-
-    if (error) { console.error(error); setCargando(false); return }
-
-    setColecciones((data ?? []).map((c: any) => ({
-      id:             c.id_coleccion,
-      nombre:         c.nombre,
-      privacidad:     c.privacidad === true ? 'privada' : 'publica',
-      descripcion:    c.descripcion ?? '',
-      fotografia:     c.url_fotografia ?? undefined,   // ← aquí estaba el bug
-      totalRecursos:  c.coleccion_recurso?.length ?? 0,
-    })))
+    setCargando(true)
+    const { colecciones: datos, error } = await listarMisColecciones(supabase)
+    if (error) console.error(error)
+    setColecciones(datos)
     setCargando(false)
   }
 
@@ -85,99 +59,28 @@ export default function ListaColecciones() {
     return resultado
   }, [colecciones, busqueda, filtroPrivacidad])
 
-  // Función auxiliar reutilizable en este mismo archivo
-  async function subirFotoColeccion(archivo: File, idColeccion: string): Promise<string> {
-    const formData = new FormData()
-    formData.append('file',     archivo)
-    formData.append('folder',   'colecciones')
-    formData.append('publicId', idColeccion)
-
-    const res = await fetch('/api/imagenes/subir', { method: 'POST', body: formData })
-    if (!res.ok) throw new Error('Error al subir imagen de colección')
-    const json = await res.json()
-    return json.url as string
-  }
-
-  // ── Reemplaza handleCrear ──
   const handleCrear = async (datos: any) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-
-    // 1. INSERT y pedir que devuelva el id generado
-    const { data: nueva, error } = await supabase
-      .from('coleccion')
-      .insert({
-        id_usuario:  user.id,
-        nombre:      datos.nombre,
-        privacidad:  datos.privacidad === 'privada',
-        descripcion: datos.descripcion,
-      })
-      .select('id_coleccion')
-      .single()
-
-    if (error || !nueva) {
-      console.error('Error creando colección:', error)
-      return
-    }
-
-    // 2. Subir foto si se seleccionó una
-    if (datos.fotografia) {
-      try {
-        const url = await subirFotoColeccion(datos.fotografia, nueva.id_coleccion)
-        await supabase
-          .from('coleccion')
-          .update({ url_fotografia: url })
-          .eq('id_coleccion', nueva.id_coleccion)
-      } catch (e) {
-        console.error('Error subiendo foto:', e)
-        // La colección ya se creó, la foto falló — no bloqueamos al usuario
-      }
-    }
-
+    const { error } = await crearColeccion(supabase, datos)
+    if (error) { console.error(error); return }
     await cargarColecciones()
   }
 
-  // ── Reemplaza handleEditar ──
   const handleEditar = async (datos: any) => {
     if (!coleccionEditar) return
-
-    // 1. Subir foto nueva si se seleccionó una
-    let url_fotografia: string | undefined = undefined
-    if (datos.fotografia) {
-      try {
-        url_fotografia = await subirFotoColeccion(datos.fotografia, coleccionEditar.id)
-      } catch (e) {
-        console.error('Error subiendo foto:', e)
-      }
-    }
-
-    // 2. UPDATE — solo incluye url_fotografia si cambió
-    const { error } = await supabase
-      .from('coleccion')
-      .update({
-        nombre:        datos.nombre,
-        privacidad:    datos.privacidad === 'privada',
-        descripcion:   datos.descripcion,
-        ...(url_fotografia ? { url_fotografia } : {}),
-      })
-      .eq('id_coleccion', coleccionEditar.id)
-
+    const { error } = await editarColeccion(supabase, coleccionEditar.id, datos)
     if (error) { console.error(error); return }
     setColeccionEditar(null)
     await cargarColecciones()
   }
 
-    const rutaDetalle = pathname.startsWith('/estudiante')
+  const rutaDetalle = pathname.startsWith('/estudiante')
     ? '/estudiante/biblioteca'
     : '/docente/colecciones'
 
   const handleEliminarConfirmado = async () => {
     if (!coleccionEliminar) return
     setEliminando(true)
-    const { error } = await supabase
-      .from('coleccion')
-      .delete()
-      .eq('id_coleccion', coleccionEliminar.id)
+    const { error } = await eliminarColeccion(supabase, coleccionEliminar.id)
     setEliminando(false)
     if (error) { console.error(error); return }
     setColecciones((prev) => prev.filter((c) => c.id !== coleccionEliminar.id))
