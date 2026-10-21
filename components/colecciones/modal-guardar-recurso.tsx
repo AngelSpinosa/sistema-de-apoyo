@@ -2,15 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
-
-type Coleccion = {
-  id: string
-  nombre: string
-  privacidad: 'privada' | 'publica'
-  descripcion?: string
-  fotografia?: string
-  totalRecursos?: number
-}
+import { listarMisColecciones, type Coleccion } from '@/lib/api/colecciones'
 
 type Props = {
   idRecurso: string
@@ -31,56 +23,24 @@ export default function ModalGuardarRecurso({ idRecurso, onCerrar, onGuardado }:
     cargarDatos()
   }, [])
 
-    async function cargarDatos() {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+  async function cargarDatos() {
+    // Colecciones del usuario, con fotografía y totalRecursos ya resueltos
+    // por la misma función que usa la lista de colecciones.
+    const { colecciones: cols, error } = await listarMisColecciones(supabase)
+    if (error) { console.error('Error colecciones:', error); setCargando(false); return }
 
-    // Consulta 1: colecciones del usuario (sin JOIN)
-    const { data: cols, error: errorCols } = await supabase
-        .from('coleccion')
-        .select('id_coleccion, nombre, privacidad, descripcion')
-        .eq('id_usuario', user.id)
-        .order('fecha_creacion', { ascending: false })
-
-    if (errorCols) { console.error('Error colecciones:', errorCols); setCargando(false); return }
-
-    // Consulta 2: total de recursos por colección
-    const idsColeccion = (cols ?? []).map((c: any) => c.id_coleccion)
-    
-    const { data: recursos } = idsColeccion.length > 0
-        ? await supabase
-            .from('coleccion_recurso')
-            .select('id_coleccion')
-            .in('id_coleccion', idsColeccion)
-        : { data: [] }
-
-    // Consulta 3: en cuáles ya está el recurso actual
+    // En cuáles colecciones ya está guardado este recurso
     const { data: existentes } = await supabase
-        .from('coleccion_recurso')
-        .select('id_coleccion')
-        .eq('id_recurso', idRecurso)
-
-    
-    // Conteo de recursos por colección
-    const conteo: Record<string, number> = {}
-    for (const r of recursos ?? []) {
-        conteo[r.id_coleccion] = (conteo[r.id_coleccion] ?? 0) + 1
-    }
+      .from('coleccion_recurso')
+      .select('id_coleccion')
+      .eq('id_recurso', idRecurso)
 
     const idsExistentes = new Set((existentes ?? []).map((e: any) => e.id_coleccion as string))
     setYaGuardadas(idsExistentes)
     setSeleccionadas(new Set(idsExistentes))
-
-    setColecciones((cols ?? []).map((c: any) => ({
-        id: c.id_coleccion,
-        nombre: c.nombre,
-        privacidad: c.privacidad === true ? 'privada' : 'publica',
-        descripcion: c.descripcion ?? '',
-        fotografia: undefined,
-        totalRecursos: conteo[c.id_coleccion] ?? 0,
-    })))
+    setColecciones(cols)
     setCargando(false)
-    }
+  }
 
   const toggleSeleccion = (id: string) => {
     // No se puede deseleccionar si ya estaba guardada previamente
