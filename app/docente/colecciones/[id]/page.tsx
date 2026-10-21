@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import TarjetaRecurso from '@/components/recursos/tarjeta-recurso'
+import { Search } from 'lucide-react'
 
 type Coleccion = {
   nombre: string
@@ -17,6 +18,8 @@ type Recurso = {
   fuente: string
   descripcion: string
   promedio: number
+  urlFuente?: string
+  formato?: string
 }
 
 export default function DetalleColeccionPage() {
@@ -25,6 +28,7 @@ export default function DetalleColeccionPage() {
   const [coleccion, setColeccion] = useState<Coleccion | null>(null)
   const [recursos, setRecursos]   = useState<Recurso[]>([])
   const [cargando, setCargando]   = useState(true)
+  const [busqueda, setBusqueda]   = useState('')
   const supabase = createClient()
 
   useEffect(() => {
@@ -61,6 +65,7 @@ export default function DetalleColeccionPage() {
         promedio_calificacion,
         recurso_bruto (
           url_fuente,
+          formato,
           autor,
           repositorio_externo (nombre_fuente)
         )
@@ -73,6 +78,8 @@ export default function DetalleColeccionPage() {
       fuente: r.recurso_bruto?.repositorio_externo?.nombre_fuente ?? 'Desconocido',
       descripcion: r.recurso_bruto?.autor ?? '',
       promedio: r.promedio_calificacion ?? 0,
+      urlFuente: r.recurso_bruto?.url_fuente ?? undefined,
+      formato: r.recurso_bruto?.formato ?? undefined,
     })))
 
     setCargando(false)
@@ -81,6 +88,17 @@ export default function DetalleColeccionPage() {
   const handleVerRecurso = (idRecurso: string) => {
     router.push(`/dashboard/recurso/${idRecurso}`)
   }
+
+  const recursosFiltrados = useMemo(() => {
+    const termino = busqueda.trim().toLowerCase()
+    if (!termino) return recursos
+    return recursos.filter(
+      (r) =>
+        r.titulo.toLowerCase().includes(termino) ||
+        r.descripcion.toLowerCase().includes(termino) ||
+        r.fuente.toLowerCase().includes(termino)
+    )
+  }, [recursos, busqueda])
 
   if (cargando) {
     return (
@@ -133,6 +151,27 @@ export default function DetalleColeccionPage() {
         </p>
       </div>
 
+      {/* Barra de búsqueda dentro de la colección */}
+      {recursos.length > 0 && (
+        <div className="relative mt-4 max-w-sm">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <input
+            type="text"
+            value={busqueda}
+            onChange={(e) => setBusqueda(e.target.value)}
+            placeholder="Buscar en esta colección"
+            className="w-full pl-9 pr-9 py-2 rounded-full border border-gray-200 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-[#003087] transition bg-white"
+          />
+          {busqueda && (
+            <button
+              type="button"
+              onClick={() => setBusqueda('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >✕</button>
+          )}
+        </div>
+      )}
+
       <hr className="my-6 border-gray-200" />
 
       {/* Grid de recursos */}
@@ -143,9 +182,13 @@ export default function DetalleColeccionPage() {
           </svg>
           <p className="text-gray-400 text-sm">Esta colección aún no tiene recursos.</p>
         </div>
+      ) : recursosFiltrados.length === 0 ? (
+        <p className="text-gray-400 text-sm text-center mt-10">
+          No se encontraron recursos para "{busqueda}"
+        </p>
       ) : (
         <div className="grid grid-cols-3 gap-6">
-          {recursos.map((r) => (
+          {recursosFiltrados.map((r) => (
             <TarjetaRecurso
               key={r.id}
               idRecurso={r.id}
@@ -153,6 +196,8 @@ export default function DetalleColeccionPage() {
               fuente={r.fuente}
               descripcion={r.descripcion}
               promedio={r.promedio}
+              urlFuente={r.urlFuente}
+              formato={r.formato}
               onClick={() => handleVerRecurso(r.id)}
             />
           ))}
